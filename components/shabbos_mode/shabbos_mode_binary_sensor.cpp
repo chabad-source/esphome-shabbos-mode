@@ -53,7 +53,8 @@ void ShabbosModeBinarySensor::dump_config() {
 }
 
 bool ShabbosModeBinarySensor::compute_active_(const ESPTime &now) const {
-  struct tm current_tm = now.to_c_tm();
+  auto now_copy = now;
+  struct tm current_tm = now_copy.to_c_tm();
   hdate current = convertDate(current_tm);
   current.offset = ESPTime::timezone_offset();
   setEY(&current, this->in_israel_);

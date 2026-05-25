@@ -5,8 +5,8 @@
 #include "esphome/core/component.h"
 
 extern "C" {
-#include "NOAAcalculator.h"
 #include "hebrewcalendar.h"
+#include "NOAAcalculator.h"
 }
 
 namespace esphome {
