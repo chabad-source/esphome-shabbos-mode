@@ -43,6 +43,11 @@ enum SettingSwitchType {
   SETTING_SWITCH_EARLY_TAKE_IN_APPLIES_TO_YOM_TOV = 2,
 };
 
+enum SettingTextSensorType {
+  SETTING_TEXT_SENSOR_NEXT_TURN_ON = 0,
+  SETTING_TEXT_SENSOR_NEXT_TURN_OFF = 1,
+};
+
 class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
  public:
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
@@ -94,6 +99,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   bool get_setting_switch_value(SettingSwitchType type) const;
   void set_setting_switch_value(SettingSwitchType type, bool value);
   std::string get_plag_opinion_name() const;
+  std::string get_next_turn_on_text() const;
+  std::string get_next_turn_off_text() const;
 
   void setup() override;
   void update() override;
@@ -107,7 +114,9 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   hdate calculate_early_take_in_event_(hdate date) const;
   hdate calculate_plag_event_(hdate date) const;
   long calculate_shaah_zmanis_(hdate startday, hdate endday) const;
+  hdate calculate_next_transition_(const ESPTime &now, bool want_turn_on) const;
   hdate get_date_from_utc_time_(hdate current, double time, bool is_sunrise) const;
+  std::string format_hdate_(const hdate &date) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
   bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;

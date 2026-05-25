@@ -39,5 +39,17 @@ void ShabbosModePlagOpinionSelect::control(const std::string &value) {
   this->publish_state(this->parent_->get_plag_opinion_name());
 }
 
+void ShabbosModeEventTextSensor::setup() { this->update(); }
+
+void ShabbosModeEventTextSensor::update() {
+  if (this->setting_type_ == SETTING_TEXT_SENSOR_NEXT_TURN_OFF) {
+    this->publish_state(this->parent_->get_next_turn_off_text());
+    return;
+  }
+  this->publish_state(this->parent_->get_next_turn_on_text());
+}
+
+void ShabbosModeEventTextSensor::dump_config() { LOG_TEXT_SENSOR("", "Shabbos Mode Event Text Sensor", this); }
+
 }  // namespace shabbos_mode
 }  // namespace esphome

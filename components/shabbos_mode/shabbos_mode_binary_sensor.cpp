@@ -1,6 +1,7 @@
 #include "shabbos_mode_binary_sensor.h"
 
 #include <cmath>
+#include <ctime>
 
 #include "esphome/core/log.h"
 
@@ -305,6 +306,46 @@ long ShabbosModeBinarySensor::calculate_shaah_zmanis_(hdate startday, hdate endd
   return diff / 12;
 }
 
+hdate ShabbosModeBinarySensor::calculate_next_transition_(const ESPTime &now, bool want_turn_on) const {
+  auto now_copy = now;
+  struct tm base_tm = now_copy.to_c_tm();
+  hdate current = convertDate(base_tm);
+  current.offset = ESPTime::timezone_offset();
+  setEY(&current, this->in_israel_);
+
+  for (int offset_days = 0; offset_days < 370; offset_days++) {
+    struct tm search_tm = base_tm;
+    search_tm.tm_mday += offset_days;
+    if (mktime(&search_tm) == -1) {
+      continue;
+    }
+
+    hdate search_date = convertDate(search_tm);
+    search_date.offset = current.offset;
+    setEY(&search_date, this->in_israel_);
+
+    hdate event = {0};
+    if (want_turn_on) {
+      int candlelighting = iscandlelighting(search_date);
+      if (candlelighting != 1 && candlelighting != 2) {
+        continue;
+      }
+      event = this->calculate_start_event_(search_date, search_tm.tm_mon + 1, search_tm.tm_mday);
+    } else {
+      if (!isassurbemelachah(search_date)) {
+        continue;
+      }
+      event = this->calculate_end_event_(search_date);
+    }
+
+    if (this->is_valid_event_(event) && hdatecompare(current, event) == 1) {
+      return event;
+    }
+  }
+
+  return (hdate) {0};
+}
+
 void ShabbosModeBinarySensor::set_early_take_in_plag_opinion(const std::string &plag_opinion) {
   this->has_early_take_in_ = true;
   this->early_take_in_enabled_ = true;
@@ -449,6 +490,44 @@ std::string ShabbosModeBinarySensor::get_plag_opinion_name() const {
     default:
       return "baal_hatanya";
   }
+}
+
+std::string ShabbosModeBinarySensor::get_next_turn_on_text() const {
+  if (this->time_ == nullptr) {
+    return "";
+  }
+  auto now = this->time_->now();
+  if (!now.is_valid()) {
+    return "";
+  }
+  return this->format_hdate_(this->calculate_next_transition_(now, true));
+}
+
+std::string ShabbosModeBinarySensor::get_next_turn_off_text() const {
+  if (this->time_ == nullptr) {
+    return "";
+  }
+  auto now = this->time_->now();
+  if (!now.is_valid()) {
+    return "";
+  }
+  return this->format_hdate_(this->calculate_next_transition_(now, false));
+}
+
+std::string ShabbosModeBinarySensor::format_hdate_(const hdate &date) const {
+  if (!this->is_valid_event_(date)) {
+    return "";
+  }
+  time_t time = hdatetime_t(date);
+  struct tm *local = localtime(&time);
+  if (local == nullptr) {
+    return "";
+  }
+  char buffer[32];
+  if (strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", local) == 0) {
+    return "";
+  }
+  return std::string(buffer);
 }
 
 bool ShabbosModeBinarySensor::is_valid_event_(const hdate &date) const { return date.year != 0; }

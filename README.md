@@ -117,42 +117,52 @@ number:
     name: "Shabbos Latitude"
     shabbos_mode_id: shabbos_active
     type: latitude
+    mode: box
   - platform: shabbos_mode
     name: "Shabbos Longitude"
     shabbos_mode_id: shabbos_active
     type: longitude
+    mode: box
   - platform: shabbos_mode
     name: "Shabbos Start Offset"
     shabbos_mode_id: shabbos_active
     type: start_offset_minutes
+    mode: box
   - platform: shabbos_mode
     name: "Shabbos End Degree"
     shabbos_mode_id: shabbos_active
     type: end_degree
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In Hour"
     shabbos_mode_id: shabbos_active
     type: early_take_in_hour
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In Minute"
     shabbos_mode_id: shabbos_active
     type: early_take_in_minute
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In From Month"
     shabbos_mode_id: shabbos_active
     type: early_take_in_from_month
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In From Day"
     shabbos_mode_id: shabbos_active
     type: early_take_in_from_day
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In To Month"
     shabbos_mode_id: shabbos_active
     type: early_take_in_to_month
+    mode: box
   - platform: shabbos_mode
     name: "Early Take-In To Day"
     shabbos_mode_id: shabbos_active
     type: early_take_in_to_day
+    mode: box
 
 switch:
   - platform: shabbos_mode
@@ -172,6 +182,16 @@ select:
   - platform: shabbos_mode
     name: "Early Take-In Plag Opinion"
     shabbos_mode_id: shabbos_active
+
+text_sensor:
+  - platform: shabbos_mode
+    name: "Next Shabbos Mode Turn On"
+    shabbos_mode_id: shabbos_active
+    type: next_turn_on
+  - platform: shabbos_mode
+    name: "Next Shabbos Mode Turn Off"
+    shabbos_mode_id: shabbos_active
+    type: next_turn_off
 ```
 
 Available `number` types:
@@ -202,6 +222,11 @@ The `select` companion entity controls `plag_opinion` with:
 - `baal_hatanya`
 - `gra`
 - `mga`
+
+Available `text_sensor` types:
+
+- `next_turn_on`
+- `next_turn_off`
 
 At the moment, these web-editable companion entities change the running device state immediately, but they do not yet persist their values across reboot. The YAML values are still the startup defaults.
 
@@ -266,8 +291,14 @@ components/
   shabbos_mode/
     __init__.py
     binary_sensor.py
+    number.py
+    select.py
     shabbos_mode_binary_sensor.cpp
     shabbos_mode_binary_sensor.h
+    shabbos_mode_controls.cpp
+    shabbos_mode_controls.h
+    switch.py
+    text_sensor.py
     hebrewcalendar.c
     hebrewcalendar.h
     NOAAcalculator.c
