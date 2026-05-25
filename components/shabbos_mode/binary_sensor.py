@@ -21,9 +21,9 @@ ShabbosModeBinarySensor = shabbos_mode_ns.class_(
 )
 
 CONFIG_SCHEMA = (
-    binary_sensor.BINARY_SENSOR_SCHEMA.extend(
+    binary_sensor.binary_sensor_schema(ShabbosModeBinarySensor)
+    .extend(
         {
-            cv.GenerateID(): cv.declare_id(ShabbosModeBinarySensor),
             cv.Required(CONF_TIME_ID): cv.use_id(time.RealTimeClock),
             cv.Required(CONF_LATITUDE): cv.float_range(min=-90.0, max=90.0),
             cv.Required(CONF_LONGITUDE): cv.float_range(min=-180.0, max=180.0),
@@ -34,7 +34,8 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_END_DEGREE, default=8.5): cv.float_range(min=0.0, max=30.0),
             cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
         }
-    ).extend(cv.polling_component_schema("30s"))
+    )
+    .extend(cv.polling_component_schema("30s"))
 )
 
 
