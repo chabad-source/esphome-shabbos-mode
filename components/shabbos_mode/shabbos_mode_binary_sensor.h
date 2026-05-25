@@ -15,6 +15,8 @@ extern "C" {
 namespace esphome {
 namespace shabbos_mode {
 
+class ShabbosModeEventTextSensor;
+
 enum PlagOpinion {
   PLAG_OPINION_BAAL_HATANYA = 0,
   PLAG_OPINION_GRA = 1,
@@ -113,6 +115,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   std::string get_next_turn_off_text() const;
   std::string get_current_hebrew_date_text() const;
   void save_runtime_settings();
+  void register_event_text_sensor(ShabbosModeEventTextSensor *sensor);
 
   void setup() override;
   void update() override;
@@ -136,6 +139,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   bool parse_month_day_(const std::string &value, int &month, int &day) const;
   void load_runtime_settings_();
   void save_runtime_settings_();
+  void notify_runtime_settings_changed_();
   std::string normalize_plag_opinion_(const std::string &plag_opinion) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
@@ -193,6 +197,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
     int early_take_in_to_day;
   };
   ESPPreferenceObject settings_pref_;
+  std::vector<ShabbosModeEventTextSensor *> event_text_sensors_;
 };
 
 }  // namespace shabbos_mode

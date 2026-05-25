@@ -52,7 +52,10 @@ void ShabbosModeSettingText::control(const std::string &value) {
   this->publish_state(this->parent_->get_setting_text_value(this->setting_type_));
 }
 
-void ShabbosModeEventTextSensor::setup() { this->update(); }
+void ShabbosModeEventTextSensor::setup() {
+  this->parent_->register_event_text_sensor(this);
+  this->update();
+}
 
 void ShabbosModeEventTextSensor::update() {
   if (this->setting_type_ == SETTING_TEXT_SENSOR_NEXT_TURN_OFF) {

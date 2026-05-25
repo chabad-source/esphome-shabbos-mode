@@ -365,6 +365,7 @@ void ShabbosModeBinarySensor::set_early_take_in_plag_opinion(const std::string &
     this->early_take_in_plag_opinion_ = PLAG_OPINION_BAAL_HATANYA;
   }
   this->save_runtime_settings_();
+  this->notify_runtime_settings_changed_();
 }
 
 float ShabbosModeBinarySensor::get_setting_number_value(SettingNumberType type) const {
@@ -460,6 +461,7 @@ void ShabbosModeBinarySensor::set_setting_number_value(SettingNumberType type, f
       break;
   }
   this->save_runtime_settings_();
+  this->notify_runtime_settings_changed_();
 }
 
 bool ShabbosModeBinarySensor::get_setting_switch_value(SettingSwitchType type) const {
@@ -489,6 +491,7 @@ void ShabbosModeBinarySensor::set_setting_switch_value(SettingSwitchType type, b
       break;
   }
   this->save_runtime_settings_();
+  this->notify_runtime_settings_changed_();
 }
 
 std::string ShabbosModeBinarySensor::get_setting_text_value(SettingTextType type) const {
@@ -588,6 +591,7 @@ bool ShabbosModeBinarySensor::set_setting_text_value(SettingTextType type, const
   }
 
   this->save_runtime_settings_();
+  this->notify_runtime_settings_changed_();
   return true;
 }
 
@@ -840,6 +844,10 @@ void ShabbosModeBinarySensor::save_runtime_settings_() {
 
 void ShabbosModeBinarySensor::save_runtime_settings() { this->save_runtime_settings_(); }
 
+void ShabbosModeBinarySensor::register_event_text_sensor(ShabbosModeEventTextSensor *sensor) {
+  this->event_text_sensors_.push_back(sensor);
+}
+
 std::string ShabbosModeBinarySensor::normalize_plag_opinion_(const std::string &plag_opinion) const {
   std::string normalized;
   normalized.reserve(plag_opinion.size());
@@ -851,6 +859,21 @@ std::string ShabbosModeBinarySensor::normalize_plag_opinion_(const std::string &
     }
   }
   return normalized;
+}
+
+void ShabbosModeBinarySensor::notify_runtime_settings_changed_() {
+  if (this->time_ != nullptr) {
+    auto now = this->time_->now();
+    if (now.is_valid()) {
+      this->publish_state(this->compute_active_(now));
+    }
+  }
+
+  for (auto *sensor : this->event_text_sensors_) {
+    if (sensor != nullptr) {
+      sensor->update();
+    }
+  }
 }
 
 bool ShabbosModeBinarySensor::is_valid_event_(const hdate &date) const { return date.year != 0; }
