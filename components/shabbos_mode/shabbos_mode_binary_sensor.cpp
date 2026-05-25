@@ -1,4 +1,5 @@
 #include "shabbos_mode_binary_sensor.h"
+#include "shabbos_mode_controls.h"
 
 #include <algorithm>
 #include <cmath>
