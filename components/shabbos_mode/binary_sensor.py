@@ -16,14 +16,20 @@ CONF_END_DEGREE = "end_degree"
 CONF_END_OFFSET_MINUTES = "end_offset_minutes"
 CONF_EARLY_TAKE_IN = "early_take_in"
 CONF_TIME = "time"
-CONF_APPLIES_TO = "applies_to"
+CONF_OFFSET_MINUTES = "offset_minutes"
+CONF_FROM = "from"
+CONF_TO = "to"
+CONF_PLAG_OPINION = "plag_opinion"
+CONF_APPLIES_TO_YOM_TOV = "applies_to_yom_tov"
 
-EARLY_TAKE_IN_APPLIES_TO = {
-    "shabbos": "shabbos",
-    "shabbos_and_yom_tov": "shabbos_and_yom_tov",
+PLAG_OPINIONS = {
+    "baal_hatanya": "baal_hatanya",
+    "gra": "gra",
+    "mga": "mga",
 }
 
 TIME_OF_DAY_RE = cv.All(cv.string_strict, cv.matches_regex(r"^(?:[01]\d|2[0-3]):[0-5]\d$"))
+MONTH_DAY_RE = cv.All(cv.string_strict, cv.matches_regex(r"^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$"))
 
 shabbos_mode_ns = cg.esphome_ns.namespace("shabbos_mode")
 ShabbosModeBinarySensor = shabbos_mode_ns.class_(
@@ -45,10 +51,12 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
             cv.Optional(CONF_EARLY_TAKE_IN): cv.Schema(
                 {
-                    cv.Required(CONF_TIME): TIME_OF_DAY_RE,
-                    cv.Optional(CONF_APPLIES_TO, default="shabbos"): cv.enum(
-                        EARLY_TAKE_IN_APPLIES_TO, lower=True
-                    ),
+                    cv.Optional(CONF_TIME): TIME_OF_DAY_RE,
+                    cv.Optional(CONF_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
+                    cv.Optional(CONF_FROM): MONTH_DAY_RE,
+                    cv.Optional(CONF_TO): MONTH_DAY_RE,
+                    cv.Optional(CONF_PLAG_OPINION, default="baal_hatanya"): cv.enum(PLAG_OPINIONS, lower=True),
+                    cv.Optional(CONF_APPLIES_TO_YOM_TOV, default=False): cv.boolean,
                 }
             ),
         }
@@ -74,10 +82,15 @@ async def to_code(config):
     cg.add(var.set_end_offset_minutes(config[CONF_END_OFFSET_MINUTES]))
     if CONF_EARLY_TAKE_IN in config:
         early_take_in = config[CONF_EARLY_TAKE_IN]
-        hour, minute = [int(part) for part in early_take_in[CONF_TIME].split(":")]
-        cg.add(var.set_early_take_in_time(hour, minute))
-        cg.add(
-            var.set_early_take_in_for_yom_tov(
-                early_take_in[CONF_APPLIES_TO] == "shabbos_and_yom_tov"
-            )
-        )
+        if CONF_TIME in early_take_in:
+            hour, minute = [int(part) for part in early_take_in[CONF_TIME].split(":")]
+            cg.add(var.set_early_take_in_time(hour, minute))
+        cg.add(var.set_early_take_in_offset_minutes(early_take_in[CONF_OFFSET_MINUTES]))
+        cg.add(var.set_early_take_in_plag_opinion(early_take_in[CONF_PLAG_OPINION]))
+        cg.add(var.set_early_take_in_for_yom_tov(early_take_in[CONF_APPLIES_TO_YOM_TOV]))
+        if CONF_FROM in early_take_in:
+            month, day = [int(part) for part in early_take_in[CONF_FROM].split("-")]
+            cg.add(var.set_early_take_in_from(month, day))
+        if CONF_TO in early_take_in:
+            month, day = [int(part) for part in early_take_in[CONF_TO].split("-")]
+            cg.add(var.set_early_take_in_to(month, day))

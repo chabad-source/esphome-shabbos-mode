@@ -50,8 +50,31 @@ void ShabbosModeBinarySensor::dump_config() {
   ESP_LOGCONFIG(TAG, "  End degree: %.2f", this->end_degree_);
   ESP_LOGCONFIG(TAG, "  End offset: %d min", this->end_offset_minutes_);
   if (this->has_early_take_in_) {
-    ESP_LOGCONFIG(TAG, "  Early take-in time: %02d:%02d", this->early_take_in_hour_, this->early_take_in_minute_);
+    if (this->has_early_take_in_time_) {
+      ESP_LOGCONFIG(TAG, "  Early take-in requested time: %02d:%02d", this->early_take_in_hour_,
+                    this->early_take_in_minute_);
+    } else {
+      ESP_LOGCONFIG(TAG, "  Early take-in requested time: plag");
+    }
+    ESP_LOGCONFIG(TAG, "  Early take-in offset: %d min", this->early_take_in_offset_minutes_);
     ESP_LOGCONFIG(TAG, "  Early take-in applies to Yom Tov: %s", YESNO(this->early_take_in_for_yom_tov_));
+    const char *plag_opinion = "baal_hatanya";
+    if (this->early_take_in_plag_opinion_ == PLAG_OPINION_GRA) {
+      plag_opinion = "gra";
+    } else if (this->early_take_in_plag_opinion_ == PLAG_OPINION_MGA) {
+      plag_opinion = "mga";
+    }
+    ESP_LOGCONFIG(TAG, "  Early take-in plag opinion: %s", plag_opinion);
+    if (this->has_early_take_in_from_) {
+      ESP_LOGCONFIG(TAG, "  Early take-in from: %02d-%02d", this->early_take_in_from_month_, this->early_take_in_from_day_);
+    } else {
+      ESP_LOGCONFIG(TAG, "  Early take-in from: always");
+    }
+    if (this->has_early_take_in_to_) {
+      ESP_LOGCONFIG(TAG, "  Early take-in to: %02d-%02d", this->early_take_in_to_month_, this->early_take_in_to_day_);
+    } else {
+      ESP_LOGCONFIG(TAG, "  Early take-in to: always");
+    }
   }
   LOG_UPDATE_INTERVAL(this);
 }
@@ -62,6 +85,8 @@ bool ShabbosModeBinarySensor::compute_active_(const ESPTime &now) const {
   hdate current = convertDate(current_tm);
   current.offset = ESPTime::timezone_offset();
   setEY(&current, this->in_israel_);
+  int current_month = current_tm.tm_mon + 1;
+  int current_day = current_tm.tm_mday;
 
   bool active = false;
   if (isassurbemelachah(current)) {
@@ -73,7 +98,7 @@ bool ShabbosModeBinarySensor::compute_active_(const ESPTime &now) const {
 
   int candlelighting = iscandlelighting(current);
   if (!active && (candlelighting == 1 || candlelighting == 2)) {
-    hdate start = this->calculate_start_event_(current);
+    hdate start = this->calculate_start_event_(current, current_month, current_day);
     if (this->is_valid_event_(start)) {
       active = hdatecompare(current, start) != 1;
     }
@@ -82,13 +107,13 @@ bool ShabbosModeBinarySensor::compute_active_(const ESPTime &now) const {
   return active;
 }
 
-hdate ShabbosModeBinarySensor::calculate_start_event_(hdate date) const {
+hdate ShabbosModeBinarySensor::calculate_start_event_(hdate date, int current_month, int current_day) const {
   if (iscandlelighting(date) == 2) {
     return this->calculate_date_event_(date, this->end_degree_, this->end_offset_minutes_);
   }
 
   hdate start = this->calculate_date_event_(date, this->start_degree_, this->start_offset_minutes_);
-  if (!this->should_apply_early_take_in_(date)) {
+  if (!this->should_apply_early_take_in_(date, current_month, current_day)) {
     return start;
   }
 
@@ -108,9 +133,59 @@ hdate ShabbosModeBinarySensor::calculate_end_event_(hdate date) const {
 }
 
 hdate ShabbosModeBinarySensor::calculate_early_take_in_event_(hdate date) const {
-  hdate result = hdatenew(date.year, date.month, date.day, this->early_take_in_hour_, this->early_take_in_minute_, 0, 0,
-                          date.offset);
-  setEY(&result, date.EY);
+  hdate plag = this->calculate_plag_event_(date);
+  if (!this->is_valid_event_(plag)) {
+    return plag;
+  }
+
+  hdate candidate = plag;
+  if (this->has_early_take_in_time_) {
+    candidate = hdatenew(date.year, date.month, date.day, this->early_take_in_hour_, this->early_take_in_minute_, 0, 0,
+                         date.offset);
+    setEY(&candidate, date.EY);
+  }
+  if (this->early_take_in_offset_minutes_ != 0) {
+    hdateaddminute(&candidate, this->early_take_in_offset_minutes_);
+  }
+  if (hdatecompare(candidate, plag) == 1) {
+    return plag;
+  }
+  return candidate;
+}
+
+hdate ShabbosModeBinarySensor::calculate_plag_event_(hdate date) const {
+  location here{this->latitude_, this->longitude_, this->elevation_};
+  hdate startday = {0};
+  hdate endday = {0};
+
+  switch (this->early_take_in_plag_opinion_) {
+    case PLAG_OPINION_GRA:
+      startday = this->get_date_from_utc_time_(date, getUTCSunrise(hdatejulian(date), here, 90.0, 0), true);
+      endday = this->get_date_from_utc_time_(date, getUTCSunset(hdatejulian(date), here, 90.0, 0), false);
+      break;
+    case PLAG_OPINION_MGA:
+      startday = this->get_date_from_utc_time_(date, getUTCSunrise(hdatejulian(date), here, 90.0, 0), true);
+      if (this->is_valid_event_(startday)) {
+        hdateaddminute(&startday, -72);
+      }
+      endday = this->get_date_from_utc_time_(date, getUTCSunset(hdatejulian(date), here, 90.0, 0), false);
+      if (this->is_valid_event_(endday)) {
+        hdateaddminute(&endday, 72);
+      }
+      break;
+    case PLAG_OPINION_BAAL_HATANYA:
+    default:
+      startday = this->get_date_from_utc_time_(date, getUTCSunrise(hdatejulian(date), here, 91.583, 0), true);
+      endday = this->get_date_from_utc_time_(date, getUTCSunset(hdatejulian(date), here, 91.583, 0), false);
+      break;
+  }
+
+  long shaah_zmanis = this->calculate_shaah_zmanis_(startday, endday);
+  if (shaah_zmanis == 0) {
+    return (hdate) {0};
+  }
+  hdate result = startday;
+  hdateaddmsecond(&result, static_cast<long>(shaah_zmanis * 10.75));
   return result;
 }
 
@@ -181,14 +256,63 @@ long ShabbosModeBinarySensor::get_local_mean_time_offset_(hdate current) const {
   return static_cast<long>(this->longitude_ * 4 * 60 - current.offset);
 }
 
-bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date) const {
+bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date, int current_month, int current_day) const {
   if (!this->has_early_take_in_ || iscandlelighting(date) != 1) {
+    return false;
+  }
+  if (!this->is_in_early_take_in_range_(current_month, current_day)) {
     return false;
   }
   if (date.wday == 6) {
     return true;
   }
   return this->early_take_in_for_yom_tov_;
+}
+
+bool ShabbosModeBinarySensor::is_in_early_take_in_range_(int current_month, int current_day) const {
+  if (!this->has_early_take_in_from_ && !this->has_early_take_in_to_) {
+    return true;
+  }
+
+  int current = this->month_day_to_ordinal_(current_month, current_day);
+  int from = this->has_early_take_in_from_ ? this->month_day_to_ordinal_(this->early_take_in_from_month_, this->early_take_in_from_day_) : 1;
+  int to = this->has_early_take_in_to_ ? this->month_day_to_ordinal_(this->early_take_in_to_month_, this->early_take_in_to_day_) : 366;
+
+  if (from <= to) {
+    return current >= from && current <= to;
+  }
+  return current >= from || current <= to;
+}
+
+int ShabbosModeBinarySensor::month_day_to_ordinal_(int month, int day) const {
+  static const int offsets[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+  return offsets[month - 1] + day;
+}
+
+long ShabbosModeBinarySensor::calculate_shaah_zmanis_(hdate startday, hdate endday) const {
+  long diff = 0;
+  long start = HebrewCalendarElapsedDays(startday.year) + (startday.dayofyear - 1);
+  long end = HebrewCalendarElapsedDays(endday.year) + (endday.dayofyear - 1);
+  diff = end - start;
+  diff = (diff * 24) + (endday.hour - startday.hour);
+  diff = (diff * 60) + (endday.min - startday.min);
+  diff = (diff * 60) + (endday.sec - startday.sec);
+  diff = (diff * 1000) + (endday.msec - startday.msec);
+  if (startday.year == 0 || endday.year == 0) {
+    return 0;
+  }
+  return diff / 12;
+}
+
+void ShabbosModeBinarySensor::set_early_take_in_plag_opinion(const std::string &plag_opinion) {
+  this->has_early_take_in_ = true;
+  if (plag_opinion == "gra") {
+    this->early_take_in_plag_opinion_ = PLAG_OPINION_GRA;
+  } else if (plag_opinion == "mga") {
+    this->early_take_in_plag_opinion_ = PLAG_OPINION_MGA;
+  } else {
+    this->early_take_in_plag_opinion_ = PLAG_OPINION_BAAL_HATANYA;
+  }
 }
 
 bool ShabbosModeBinarySensor::is_valid_event_(const hdate &date) const { return date.year != 0; }
