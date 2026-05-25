@@ -514,6 +514,22 @@ std::string ShabbosModeBinarySensor::get_next_turn_off_text() const {
   return this->format_hdate_(this->calculate_next_transition_(now, false));
 }
 
+std::string ShabbosModeBinarySensor::get_current_hebrew_date_text() const {
+  if (this->time_ == nullptr) {
+    return "";
+  }
+  auto now = this->time_->now();
+  if (!now.is_valid()) {
+    return "";
+  }
+  auto now_copy = now;
+  struct tm current_tm = now_copy.to_c_tm();
+  hdate current = convertDate(current_tm);
+  current.offset = ESPTime::timezone_offset();
+  setEY(&current, this->in_israel_);
+  return this->format_hebrew_date_(current);
+}
+
 std::string ShabbosModeBinarySensor::format_hdate_(const hdate &date) const {
   if (!this->is_valid_event_(date)) {
     return "";
@@ -523,10 +539,44 @@ std::string ShabbosModeBinarySensor::format_hdate_(const hdate &date) const {
   if (local == nullptr) {
     return "";
   }
-  char buffer[32];
-  if (strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", local) == 0) {
+  static const char *const weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+  static const char *const months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+  int hour_24 = local->tm_hour;
+  int hour_12 = hour_24 % 12;
+  if (hour_12 == 0) {
+    hour_12 = 12;
+  }
+  char buffer[48];
+  snprintf(buffer, sizeof(buffer), "%s, %s %d, %d:%02d %s", weekdays[local->tm_wday], months[local->tm_mon],
+           local->tm_mday, hour_12, local->tm_min, hour_24 >= 12 ? "PM" : "AM");
+  return std::string(buffer);
+}
+
+std::string ShabbosModeBinarySensor::format_hebrew_date_(const hdate &date) const {
+  if (!this->is_valid_event_(date)) {
     return "";
   }
+
+  static const char *const regular_months[] = {"",       "Nissan", "Iyar",  "Sivan", "Tamuz", "Av",    "Elul",
+                                               "Tishrei", "Cheshvan", "Kislev", "Teves", "Shevat", "Adar"};
+  static const char *const leap_months[] = {"",       "Nissan", "Iyar",  "Sivan", "Tamuz", "Av",      "Elul",
+                                            "Tishrei", "Cheshvan", "Kislev", "Teves", "Shevat", "Adar I", "Adar II"};
+
+  const char *month_name = "";
+  if (date.leap) {
+    if (date.month >= 1 && date.month <= 13) {
+      month_name = leap_months[date.month];
+    }
+  } else {
+    if (date.month >= 1 && date.month <= 12) {
+      month_name = regular_months[date.month];
+    }
+  }
+
+  char buffer[48];
+  snprintf(buffer, sizeof(buffer), "%d %s %d", date.day, month_name, date.year);
   return std::string(buffer);
 }
 

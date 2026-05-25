@@ -192,6 +192,10 @@ text_sensor:
     name: "Next Shabbos Mode Turn Off"
     shabbos_mode_id: shabbos_active
     type: next_turn_off
+  - platform: shabbos_mode
+    name: "Current Hebrew Date"
+    shabbos_mode_id: shabbos_active
+    type: current_hebrew_date
 ```
 
 Available `number` types:
@@ -227,6 +231,12 @@ Available `text_sensor` types:
 
 - `next_turn_on`
 - `next_turn_off`
+- `current_hebrew_date`
+
+Text sensor formats:
+
+- `next_turn_on` and `next_turn_off` default to a friendly local format like `Fri, Apr 23, 6:32 PM`
+- `current_hebrew_date` is formatted like `23 Nissan 5786`
 
 At the moment, these web-editable companion entities change the running device state immediately, but they do not yet persist their values across reboot. The YAML values are still the startup defaults.
 

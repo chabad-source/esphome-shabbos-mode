@@ -46,6 +46,10 @@ void ShabbosModeEventTextSensor::update() {
     this->publish_state(this->parent_->get_next_turn_off_text());
     return;
   }
+  if (this->setting_type_ == SETTING_TEXT_SENSOR_CURRENT_HEBREW_DATE) {
+    this->publish_state(this->parent_->get_current_hebrew_date_text());
+    return;
+  }
   this->publish_state(this->parent_->get_next_turn_on_text());
 }
 

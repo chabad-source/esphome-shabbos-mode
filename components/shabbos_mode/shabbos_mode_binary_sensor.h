@@ -46,6 +46,7 @@ enum SettingSwitchType {
 enum SettingTextSensorType {
   SETTING_TEXT_SENSOR_NEXT_TURN_ON = 0,
   SETTING_TEXT_SENSOR_NEXT_TURN_OFF = 1,
+  SETTING_TEXT_SENSOR_CURRENT_HEBREW_DATE = 2,
 };
 
 class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
@@ -101,6 +102,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   std::string get_plag_opinion_name() const;
   std::string get_next_turn_on_text() const;
   std::string get_next_turn_off_text() const;
+  std::string get_current_hebrew_date_text() const;
 
   void setup() override;
   void update() override;
@@ -117,6 +119,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   hdate calculate_next_transition_(const ESPTime &now, bool want_turn_on) const;
   hdate get_date_from_utc_time_(hdate current, double time, bool is_sunrise) const;
   std::string format_hdate_(const hdate &date) const;
+  std::string format_hebrew_date_(const hdate &date) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
   bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;

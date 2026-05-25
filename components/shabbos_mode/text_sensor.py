@@ -16,6 +16,7 @@ SettingTextSensorType = shabbos_mode_ns.enum("SettingTextSensorType")
 TEXT_SENSOR_TYPES = {
     "next_turn_on": "SETTING_TEXT_SENSOR_NEXT_TURN_ON",
     "next_turn_off": "SETTING_TEXT_SENSOR_NEXT_TURN_OFF",
+    "current_hebrew_date": "SETTING_TEXT_SENSOR_CURRENT_HEBREW_DATE",
 }
 
 CONFIG_SCHEMA = text_sensor.text_sensor_schema(
