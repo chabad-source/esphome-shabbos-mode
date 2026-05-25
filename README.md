@@ -205,6 +205,58 @@ The `select` companion entity controls `plag_opinion` with:
 
 At the moment, these web-editable companion entities change the running device state immediately, but they do not yet persist their values across reboot. The YAML values are still the startup defaults.
 
+## Advanced: Set Values From Lambda
+
+You can also change the main component directly from an ESPHome `lambda`, for example in `on_boot`, a button press, or another automation.
+
+After changing values, call `update()` so the binary sensor recalculates immediately instead of waiting for the next poll interval.
+
+```yaml
+esphome:
+  on_boot:
+    priority: -10
+    then:
+      - lambda: |-
+          id(shabbos_active).set_latitude(40.66896);
+          id(shabbos_active).set_longitude(-73.94284);
+          id(shabbos_active).set_elevation(34);
+          id(shabbos_active).set_in_israel(false);
+          id(shabbos_active).set_start_degree(0.0);
+          id(shabbos_active).set_start_offset_minutes(-18);
+          id(shabbos_active).set_end_degree(8.5);
+          id(shabbos_active).set_end_offset_minutes(0);
+
+          id(shabbos_active).set_early_take_in_enabled(true);
+          id(shabbos_active).set_early_take_in_plag_opinion("baal_hatanya");
+          id(shabbos_active).set_early_take_in_time(18, 30);
+          id(shabbos_active).set_early_take_in_offset_minutes(0);
+          id(shabbos_active).set_early_take_in_for_yom_tov(false);
+          id(shabbos_active).set_early_take_in_from(5, 1);
+          id(shabbos_active).set_early_take_in_to(9, 15);
+
+          id(shabbos_active).update();
+```
+
+Available direct setters:
+
+- `set_latitude(double latitude)`
+- `set_longitude(double longitude)`
+- `set_elevation(double elevation)`
+- `set_in_israel(bool in_israel)`
+- `set_start_degree(double start_degree)`
+- `set_start_offset_minutes(int minutes)`
+- `set_end_degree(double end_degree)`
+- `set_end_offset_minutes(int minutes)`
+- `set_early_take_in_enabled(bool enabled)`
+- `set_early_take_in_plag_opinion(const std::string &opinion)` with `baal_hatanya`, `gra`, or `mga`
+- `set_early_take_in_time(int hour, int minute)`
+- `set_early_take_in_offset_minutes(int minutes)`
+- `set_early_take_in_for_yom_tov(bool enabled)`
+- `set_early_take_in_from(int month, int day)`
+- `set_early_take_in_to(int month, int day)`
+
+If you are using the web-server companion entities, lambda-based changes and web edits both operate on the same in-memory runtime state.
+
 ## Repository layout
 
 To use this as a git-based external component, keep the repository layout like this:
