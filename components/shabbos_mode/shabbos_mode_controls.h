@@ -6,6 +6,7 @@
 #include "esphome/components/number/number.h"
 #include "esphome/components/select/select.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/text/text.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
@@ -48,6 +49,19 @@ class ShabbosModePlagOpinionSelect : public select::Select, public Component, pu
 
  protected:
   void control(const std::string &value) override;
+};
+
+class ShabbosModeSettingText : public text::Text, public Component, public Parented<ShabbosModeBinarySensor> {
+ public:
+  void set_setting_type(SettingTextType setting_type) { this->setting_type_ = setting_type; }
+
+  void setup() override;
+  void dump_config() override;
+
+ protected:
+  void control(const std::string &value) override;
+
+  SettingTextType setting_type_{SETTING_TEXT_LOCATION};
 };
 
 class ShabbosModeEventTextSensor

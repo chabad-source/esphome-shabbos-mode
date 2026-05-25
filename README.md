@@ -91,7 +91,13 @@ binary_sensor:
 
 ESPHome YAML is still compile-time configuration, but this component also supports runtime-editable companion entities that the ESPHome `web_server` can expose.
 
-Add `number`, `switch`, and `select` entities with `platform: shabbos_mode` and point them at the main binary sensor with `shabbos_mode_id`.
+The recommended setup keeps the entity count smaller by combining some related fields into editable text entries:
+
+- `location`: `latitude,longitude`
+- `early_take_in_time`: `HH:MM` or blank to use plag
+- `early_take_in_range`: `MM-DD..MM-DD` or blank to allow the feature all year
+
+Add `text`, `number`, `switch`, and `select` entities with `platform: shabbos_mode` and point them at the main binary sensor with `shabbos_mode_id`.
 
 ```yaml
 web_server:
@@ -112,21 +118,33 @@ binary_sensor:
     early_take_in:
       plag_opinion: baal_hatanya
 
+text:
+  - platform: shabbos_mode
+    name: "Shabbos Location"
+    shabbos_mode_id: shabbos_active
+    type: location
+    mode: text
+  - platform: shabbos_mode
+    name: "Early Take-In Time"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_time
+    mode: text
+  - platform: shabbos_mode
+    name: "Early Take-In Range"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_range
+    mode: text
+
 number:
-  - platform: shabbos_mode
-    name: "Shabbos Latitude"
-    shabbos_mode_id: shabbos_active
-    type: latitude
-    mode: box
-  - platform: shabbos_mode
-    name: "Shabbos Longitude"
-    shabbos_mode_id: shabbos_active
-    type: longitude
-    mode: box
   - platform: shabbos_mode
     name: "Shabbos Start Offset"
     shabbos_mode_id: shabbos_active
     type: start_offset_minutes
+    mode: box
+  - platform: shabbos_mode
+    name: "Shabbos End Offset"
+    shabbos_mode_id: shabbos_active
+    type: end_offset_minutes
     mode: box
   - platform: shabbos_mode
     name: "Shabbos End Degree"
@@ -134,34 +152,9 @@ number:
     type: end_degree
     mode: box
   - platform: shabbos_mode
-    name: "Early Take-In Hour"
+    name: "Early Take-In Offset"
     shabbos_mode_id: shabbos_active
-    type: early_take_in_hour
-    mode: box
-  - platform: shabbos_mode
-    name: "Early Take-In Minute"
-    shabbos_mode_id: shabbos_active
-    type: early_take_in_minute
-    mode: box
-  - platform: shabbos_mode
-    name: "Early Take-In From Month"
-    shabbos_mode_id: shabbos_active
-    type: early_take_in_from_month
-    mode: box
-  - platform: shabbos_mode
-    name: "Early Take-In From Day"
-    shabbos_mode_id: shabbos_active
-    type: early_take_in_from_day
-    mode: box
-  - platform: shabbos_mode
-    name: "Early Take-In To Month"
-    shabbos_mode_id: shabbos_active
-    type: early_take_in_to_month
-    mode: box
-  - platform: shabbos_mode
-    name: "Early Take-In To Day"
-    shabbos_mode_id: shabbos_active
-    type: early_take_in_to_day
+    type: early_take_in_offset_minutes
     mode: box
 
 switch:
@@ -215,6 +208,20 @@ Available `number` types:
 - `early_take_in_to_month`
 - `early_take_in_to_day`
 
+Available `text` types:
+
+- `location`
+- `early_take_in_time`
+- `early_take_in_range`
+
+Text input formats:
+
+- `location`: `40.66896,-73.94284`
+- `early_take_in_time`: `18:30` or blank to use plag
+- `early_take_in_range`: `05-01..09-15` or blank for always active
+
+If a text value is invalid, the component keeps the previous value and logs a warning to the ESPHome logs.
+
 Available `switch` types:
 
 - `in_israel`
@@ -239,6 +246,8 @@ Text sensor formats:
 - `current_hebrew_date` is formatted like `23 Nissan 5786`
 
 These web-editable companion entities change the running device state immediately and now persist across reboot. Once you edit a runtime control from the web UI, the restored runtime value takes precedence over the YAML startup default on future boots.
+
+The older split-up number controls for location and early-take-in date/time pieces are still supported, but the text-based controls above are the recommended setup for a smaller web UI.
 
 ## Advanced: Set Values From Lambda
 
@@ -311,6 +320,7 @@ components/
     shabbos_mode_controls.cpp
     shabbos_mode_controls.h
     switch.py
+    text.py
     text_sensor.py
     hebrewcalendar.c
     hebrewcalendar.h

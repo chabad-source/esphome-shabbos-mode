@@ -50,6 +50,12 @@ enum SettingTextSensorType {
   SETTING_TEXT_SENSOR_CURRENT_HEBREW_DATE = 2,
 };
 
+enum SettingTextType {
+  SETTING_TEXT_LOCATION = 0,
+  SETTING_TEXT_EARLY_TAKE_IN_TIME = 1,
+  SETTING_TEXT_EARLY_TAKE_IN_RANGE = 2,
+};
+
 class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
  public:
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
@@ -100,6 +106,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void set_setting_number_value(SettingNumberType type, float value);
   bool get_setting_switch_value(SettingSwitchType type) const;
   void set_setting_switch_value(SettingSwitchType type, bool value);
+  std::string get_setting_text_value(SettingTextType type) const;
+  bool set_setting_text_value(SettingTextType type, const std::string &value);
   std::string get_plag_opinion_name() const;
   std::string get_next_turn_on_text() const;
   std::string get_next_turn_off_text() const;
@@ -122,6 +130,10 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   hdate get_date_from_utc_time_(hdate current, double time, bool is_sunrise) const;
   std::string format_hdate_(const hdate &date) const;
   std::string format_hebrew_date_(const hdate &date) const;
+  std::string trim_(const std::string &value) const;
+  bool parse_location_(const std::string &value, double &latitude, double &longitude) const;
+  bool parse_time_of_day_(const std::string &value, int &hour, int &minute) const;
+  bool parse_month_day_(const std::string &value, int &month, int &day) const;
   void load_runtime_settings_();
   void save_runtime_settings_();
   std::string normalize_plag_opinion_(const std::string &plag_opinion) const;

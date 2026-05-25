@@ -1,8 +1,11 @@
 #include "shabbos_mode_binary_sensor.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <cstdlib>
 #include <ctime>
+#include <sstream>
 
 #include "esphome/core/log.h"
 
@@ -488,6 +491,97 @@ void ShabbosModeBinarySensor::set_setting_switch_value(SettingSwitchType type, b
   this->save_runtime_settings_();
 }
 
+std::string ShabbosModeBinarySensor::get_setting_text_value(SettingTextType type) const {
+  char buffer[48];
+  switch (type) {
+    case SETTING_TEXT_LOCATION:
+      snprintf(buffer, sizeof(buffer), "%.5f,%.5f", this->latitude_, this->longitude_);
+      return std::string(buffer);
+    case SETTING_TEXT_EARLY_TAKE_IN_TIME:
+      if (!this->has_early_take_in_time_) {
+        return "";
+      }
+      snprintf(buffer, sizeof(buffer), "%02d:%02d", this->early_take_in_hour_, this->early_take_in_minute_);
+      return std::string(buffer);
+    case SETTING_TEXT_EARLY_TAKE_IN_RANGE:
+      if (!this->has_early_take_in_from_ && !this->has_early_take_in_to_) {
+        return "";
+      }
+      snprintf(buffer, sizeof(buffer), "%02d-%02d..%02d-%02d", this->early_take_in_from_month_, this->early_take_in_from_day_,
+               this->early_take_in_to_month_, this->early_take_in_to_day_);
+      return std::string(buffer);
+  }
+  return "";
+}
+
+bool ShabbosModeBinarySensor::set_setting_text_value(SettingTextType type, const std::string &value) {
+  std::string trimmed = this->trim_(value);
+  switch (type) {
+    case SETTING_TEXT_LOCATION: {
+      double latitude = 0.0;
+      double longitude = 0.0;
+      if (!this->parse_location_(trimmed, latitude, longitude)) {
+        ESP_LOGW(TAG, "Invalid location '%s'. Expected 'latitude,longitude'", value.c_str());
+        return false;
+      }
+      this->latitude_ = latitude;
+      this->longitude_ = longitude;
+      break;
+    }
+    case SETTING_TEXT_EARLY_TAKE_IN_TIME: {
+      this->has_early_take_in_ = true;
+      this->early_take_in_enabled_ = true;
+      if (trimmed.empty()) {
+        this->has_early_take_in_time_ = false;
+        break;
+      }
+      int hour = 0;
+      int minute = 0;
+      if (!this->parse_time_of_day_(trimmed, hour, minute)) {
+        ESP_LOGW(TAG, "Invalid early take-in time '%s'. Expected 'HH:MM' or blank", value.c_str());
+        return false;
+      }
+      this->has_early_take_in_time_ = true;
+      this->early_take_in_hour_ = hour;
+      this->early_take_in_minute_ = minute;
+      break;
+    }
+    case SETTING_TEXT_EARLY_TAKE_IN_RANGE: {
+      this->has_early_take_in_ = true;
+      this->early_take_in_enabled_ = true;
+      if (trimmed.empty()) {
+        this->has_early_take_in_from_ = false;
+        this->has_early_take_in_to_ = false;
+        break;
+      }
+      size_t separator = trimmed.find("..");
+      if (separator == std::string::npos) {
+        ESP_LOGW(TAG, "Invalid early take-in range '%s'. Expected 'MM-DD..MM-DD' or blank", value.c_str());
+        return false;
+      }
+      int from_month = 0;
+      int from_day = 0;
+      int to_month = 0;
+      int to_day = 0;
+      if (!this->parse_month_day_(trimmed.substr(0, separator), from_month, from_day) ||
+          !this->parse_month_day_(trimmed.substr(separator + 2), to_month, to_day)) {
+        ESP_LOGW(TAG, "Invalid early take-in range '%s'. Expected 'MM-DD..MM-DD' or blank", value.c_str());
+        return false;
+      }
+      this->has_early_take_in_from_ = true;
+      this->has_early_take_in_to_ = true;
+      this->early_take_in_from_month_ = from_month;
+      this->early_take_in_from_day_ = from_day;
+      this->early_take_in_to_month_ = to_month;
+      this->early_take_in_to_day_ = to_day;
+      break;
+    }
+  }
+
+  this->save_runtime_settings_();
+  return true;
+}
+
 std::string ShabbosModeBinarySensor::get_plag_opinion_name() const {
   switch (this->early_take_in_plag_opinion_) {
     case PLAG_OPINION_GRA:
@@ -586,6 +680,87 @@ std::string ShabbosModeBinarySensor::format_hebrew_date_(const hdate &date) cons
   char buffer[48];
   snprintf(buffer, sizeof(buffer), "%d %s %d", date.day, month_name, date.year);
   return std::string(buffer);
+}
+
+std::string ShabbosModeBinarySensor::trim_(const std::string &value) const {
+  auto begin = std::find_if_not(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c) != 0; });
+  auto end = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char c) { return std::isspace(c) != 0; }).base();
+  if (begin >= end) {
+    return "";
+  }
+  return std::string(begin, end);
+}
+
+bool ShabbosModeBinarySensor::parse_location_(const std::string &value, double &latitude, double &longitude) const {
+  size_t separator = value.find(",");
+  if (separator == std::string::npos) {
+    return false;
+  }
+  std::string latitude_part = this->trim_(value.substr(0, separator));
+  std::string longitude_part = this->trim_(value.substr(separator + 1));
+  if (latitude_part.empty() || longitude_part.empty()) {
+    return false;
+  }
+  char *end_ptr = nullptr;
+  latitude = std::strtod(latitude_part.c_str(), &end_ptr);
+  if (end_ptr == latitude_part.c_str() || *end_ptr != '\0') {
+    return false;
+  }
+  longitude = std::strtod(longitude_part.c_str(), &end_ptr);
+  if (end_ptr == longitude_part.c_str() || *end_ptr != '\0') {
+    return false;
+  }
+  return latitude >= -90.0 && latitude <= 90.0 && longitude >= -180.0 && longitude <= 180.0;
+}
+
+bool ShabbosModeBinarySensor::parse_time_of_day_(const std::string &value, int &hour, int &minute) const {
+  size_t separator = value.find(":");
+  if (separator == std::string::npos) {
+    return false;
+  }
+  std::string hour_part = this->trim_(value.substr(0, separator));
+  std::string minute_part = this->trim_(value.substr(separator + 1));
+  if (hour_part.empty() || minute_part.empty()) {
+    return false;
+  }
+  for (char c : hour_part) {
+    if (!std::isdigit(static_cast<unsigned char>(c))) {
+      return false;
+    }
+  }
+  for (char c : minute_part) {
+    if (!std::isdigit(static_cast<unsigned char>(c))) {
+      return false;
+    }
+  }
+  hour = std::atoi(hour_part.c_str());
+  minute = std::atoi(minute_part.c_str());
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
+bool ShabbosModeBinarySensor::parse_month_day_(const std::string &value, int &month, int &day) const {
+  size_t separator = value.find("-");
+  if (separator == std::string::npos) {
+    return false;
+  }
+  std::string month_part = this->trim_(value.substr(0, separator));
+  std::string day_part = this->trim_(value.substr(separator + 1));
+  if (month_part.empty() || day_part.empty()) {
+    return false;
+  }
+  for (char c : month_part) {
+    if (!std::isdigit(static_cast<unsigned char>(c))) {
+      return false;
+    }
+  }
+  for (char c : day_part) {
+    if (!std::isdigit(static_cast<unsigned char>(c))) {
+      return false;
+    }
+  }
+  month = std::atoi(month_part.c_str());
+  day = std::atoi(day_part.c_str());
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31;
 }
 
 void ShabbosModeBinarySensor::load_runtime_settings_() {

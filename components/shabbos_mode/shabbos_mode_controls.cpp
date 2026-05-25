@@ -1,5 +1,6 @@
 #include "shabbos_mode_controls.h"
 
+#include <string>
 #include <vector>
 
 #include "esphome/core/log.h"
@@ -37,6 +38,18 @@ void ShabbosModePlagOpinionSelect::dump_config() { LOG_SELECT("", "Shabbos Mode 
 void ShabbosModePlagOpinionSelect::control(const std::string &value) {
   this->parent_->set_early_take_in_plag_opinion(value);
   this->publish_state(this->parent_->get_plag_opinion_name());
+}
+
+void ShabbosModeSettingText::setup() { this->publish_state(this->parent_->get_setting_text_value(this->setting_type_)); }
+
+void ShabbosModeSettingText::dump_config() { LOG_TEXT("", "Shabbos Mode Setting Text", this); }
+
+void ShabbosModeSettingText::control(const std::string &value) {
+  if (!this->parent_->set_setting_text_value(this->setting_type_, value)) {
+    this->publish_state(this->parent_->get_setting_text_value(this->setting_type_));
+    return;
+  }
+  this->publish_state(this->parent_->get_setting_text_value(this->setting_type_));
 }
 
 void ShabbosModeEventTextSensor::setup() { this->update(); }
