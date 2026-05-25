@@ -15,6 +15,8 @@ or connect to: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 #ifndef NOAACALCULATOR_H
 #define NOAACALCULATOR_H
 
+#include "hebrewcalendar.h"
+
 #ifndef M_PI
 #define M_PI	3.14159265358979323846	/* pi */
 #endif
