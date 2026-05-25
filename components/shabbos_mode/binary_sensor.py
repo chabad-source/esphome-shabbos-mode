@@ -28,8 +28,29 @@ PLAG_OPINIONS = {
     "mga": "mga",
 }
 
-TIME_OF_DAY_RE = cv.All(cv.string_strict, cv.matches_regex(r"^(?:[01]\d|2[0-3]):[0-5]\d$"))
-MONTH_DAY_RE = cv.All(cv.string_strict, cv.matches_regex(r"^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$"))
+
+def validate_time_of_day(value):
+    value = cv.string_strict(value)
+    parts = value.split(":")
+    if len(parts) != 2 or not all(part.isdigit() for part in parts):
+        raise cv.Invalid("time must be in HH:MM format")
+    hour = int(parts[0])
+    minute = int(parts[1])
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        raise cv.Invalid("time must be in HH:MM format")
+    return f"{hour:02d}:{minute:02d}"
+
+
+def validate_month_day(value):
+    value = cv.string_strict(value)
+    parts = value.split("-")
+    if len(parts) != 2 or not all(part.isdigit() for part in parts):
+        raise cv.Invalid("date must be in MM-DD format")
+    month = int(parts[0])
+    day = int(parts[1])
+    if month < 1 or month > 12 or day < 1 or day > 31:
+        raise cv.Invalid("date must be in MM-DD format")
+    return f"{month:02d}-{day:02d}"
 
 shabbos_mode_ns = cg.esphome_ns.namespace("shabbos_mode")
 ShabbosModeBinarySensor = shabbos_mode_ns.class_(
@@ -51,10 +72,10 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
             cv.Optional(CONF_EARLY_TAKE_IN): cv.Schema(
                 {
-                    cv.Optional(CONF_TIME): TIME_OF_DAY_RE,
+                    cv.Optional(CONF_TIME): validate_time_of_day,
                     cv.Optional(CONF_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
-                    cv.Optional(CONF_FROM): MONTH_DAY_RE,
-                    cv.Optional(CONF_TO): MONTH_DAY_RE,
+                    cv.Optional(CONF_FROM): validate_month_day,
+                    cv.Optional(CONF_TO): validate_month_day,
                     cv.Optional(CONF_PLAG_OPINION, default="baal_hatanya"): cv.enum(PLAG_OPINIONS, lower=True),
                     cv.Optional(CONF_APPLIES_TO_YOM_TOV, default=False): cv.boolean,
                 }
