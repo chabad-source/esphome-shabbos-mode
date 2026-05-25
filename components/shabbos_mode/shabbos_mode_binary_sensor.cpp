@@ -57,6 +57,7 @@ void ShabbosModeBinarySensor::dump_config() {
       ESP_LOGCONFIG(TAG, "  Early take-in requested time: plag");
     }
     ESP_LOGCONFIG(TAG, "  Early take-in offset: %d min", this->early_take_in_offset_minutes_);
+    ESP_LOGCONFIG(TAG, "  Early take-in enabled: %s", YESNO(this->early_take_in_enabled_));
     ESP_LOGCONFIG(TAG, "  Early take-in applies to Yom Tov: %s", YESNO(this->early_take_in_for_yom_tov_));
     const char *plag_opinion = "baal_hatanya";
     if (this->early_take_in_plag_opinion_ == PLAG_OPINION_GRA) {
@@ -257,7 +258,7 @@ long ShabbosModeBinarySensor::get_local_mean_time_offset_(hdate current) const {
 }
 
 bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date, int current_month, int current_day) const {
-  if (!this->has_early_take_in_ || iscandlelighting(date) != 1) {
+  if (!this->has_early_take_in_ || !this->early_take_in_enabled_ || iscandlelighting(date) != 1) {
     return false;
   }
   if (!this->is_in_early_take_in_range_(current_month, current_day)) {
@@ -306,12 +307,147 @@ long ShabbosModeBinarySensor::calculate_shaah_zmanis_(hdate startday, hdate endd
 
 void ShabbosModeBinarySensor::set_early_take_in_plag_opinion(const std::string &plag_opinion) {
   this->has_early_take_in_ = true;
+  this->early_take_in_enabled_ = true;
   if (plag_opinion == "gra") {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_GRA;
   } else if (plag_opinion == "mga") {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_MGA;
   } else {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_BAAL_HATANYA;
+  }
+}
+
+float ShabbosModeBinarySensor::get_setting_number_value(SettingNumberType type) const {
+  switch (type) {
+    case SETTING_NUMBER_LATITUDE:
+      return this->latitude_;
+    case SETTING_NUMBER_LONGITUDE:
+      return this->longitude_;
+    case SETTING_NUMBER_ELEVATION:
+      return this->elevation_;
+    case SETTING_NUMBER_START_DEGREE:
+      return this->start_degree_;
+    case SETTING_NUMBER_START_OFFSET_MINUTES:
+      return this->start_offset_minutes_;
+    case SETTING_NUMBER_END_DEGREE:
+      return this->end_degree_;
+    case SETTING_NUMBER_END_OFFSET_MINUTES:
+      return this->end_offset_minutes_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_HOUR:
+      return this->early_take_in_hour_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_MINUTE:
+      return this->early_take_in_minute_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_OFFSET_MINUTES:
+      return this->early_take_in_offset_minutes_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_FROM_MONTH:
+      return this->early_take_in_from_month_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_FROM_DAY:
+      return this->early_take_in_from_day_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_TO_MONTH:
+      return this->early_take_in_to_month_;
+    case SETTING_NUMBER_EARLY_TAKE_IN_TO_DAY:
+      return this->early_take_in_to_day_;
+  }
+  return 0.0f;
+}
+
+void ShabbosModeBinarySensor::set_setting_number_value(SettingNumberType type, float value) {
+  switch (type) {
+    case SETTING_NUMBER_LATITUDE:
+      this->latitude_ = value;
+      break;
+    case SETTING_NUMBER_LONGITUDE:
+      this->longitude_ = value;
+      break;
+    case SETTING_NUMBER_ELEVATION:
+      this->elevation_ = value;
+      break;
+    case SETTING_NUMBER_START_DEGREE:
+      this->start_degree_ = value;
+      break;
+    case SETTING_NUMBER_START_OFFSET_MINUTES:
+      this->start_offset_minutes_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_END_DEGREE:
+      this->end_degree_ = value;
+      break;
+    case SETTING_NUMBER_END_OFFSET_MINUTES:
+      this->end_offset_minutes_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_HOUR:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_time_ = true;
+      this->early_take_in_hour_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_MINUTE:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_time_ = true;
+      this->early_take_in_minute_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_OFFSET_MINUTES:
+      this->has_early_take_in_ = true;
+      this->early_take_in_offset_minutes_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_FROM_MONTH:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_from_ = true;
+      this->early_take_in_from_month_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_FROM_DAY:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_from_ = true;
+      this->early_take_in_from_day_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_TO_MONTH:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_to_ = true;
+      this->early_take_in_to_month_ = static_cast<int>(value);
+      break;
+    case SETTING_NUMBER_EARLY_TAKE_IN_TO_DAY:
+      this->has_early_take_in_ = true;
+      this->has_early_take_in_to_ = true;
+      this->early_take_in_to_day_ = static_cast<int>(value);
+      break;
+  }
+}
+
+bool ShabbosModeBinarySensor::get_setting_switch_value(SettingSwitchType type) const {
+  switch (type) {
+    case SETTING_SWITCH_IN_ISRAEL:
+      return this->in_israel_;
+    case SETTING_SWITCH_EARLY_TAKE_IN_ENABLED:
+      return this->early_take_in_enabled_;
+    case SETTING_SWITCH_EARLY_TAKE_IN_APPLIES_TO_YOM_TOV:
+      return this->early_take_in_for_yom_tov_;
+  }
+  return false;
+}
+
+void ShabbosModeBinarySensor::set_setting_switch_value(SettingSwitchType type, bool value) {
+  switch (type) {
+    case SETTING_SWITCH_IN_ISRAEL:
+      this->in_israel_ = value;
+      break;
+    case SETTING_SWITCH_EARLY_TAKE_IN_ENABLED:
+      this->has_early_take_in_ = true;
+      this->early_take_in_enabled_ = value;
+      break;
+    case SETTING_SWITCH_EARLY_TAKE_IN_APPLIES_TO_YOM_TOV:
+      this->has_early_take_in_ = true;
+      this->early_take_in_for_yom_tov_ = value;
+      break;
+  }
+}
+
+std::string ShabbosModeBinarySensor::get_plag_opinion_name() const {
+  switch (this->early_take_in_plag_opinion_) {
+    case PLAG_OPINION_GRA:
+      return "gra";
+    case PLAG_OPINION_MGA:
+      return "mga";
+    case PLAG_OPINION_BAAL_HATANYA:
+    default:
+      return "baal_hatanya";
   }
 }
 

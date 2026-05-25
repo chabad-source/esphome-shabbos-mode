@@ -20,6 +20,29 @@ enum PlagOpinion {
   PLAG_OPINION_MGA = 2,
 };
 
+enum SettingNumberType {
+  SETTING_NUMBER_LATITUDE = 0,
+  SETTING_NUMBER_LONGITUDE = 1,
+  SETTING_NUMBER_ELEVATION = 2,
+  SETTING_NUMBER_START_DEGREE = 3,
+  SETTING_NUMBER_START_OFFSET_MINUTES = 4,
+  SETTING_NUMBER_END_DEGREE = 5,
+  SETTING_NUMBER_END_OFFSET_MINUTES = 6,
+  SETTING_NUMBER_EARLY_TAKE_IN_HOUR = 7,
+  SETTING_NUMBER_EARLY_TAKE_IN_MINUTE = 8,
+  SETTING_NUMBER_EARLY_TAKE_IN_OFFSET_MINUTES = 9,
+  SETTING_NUMBER_EARLY_TAKE_IN_FROM_MONTH = 10,
+  SETTING_NUMBER_EARLY_TAKE_IN_FROM_DAY = 11,
+  SETTING_NUMBER_EARLY_TAKE_IN_TO_MONTH = 12,
+  SETTING_NUMBER_EARLY_TAKE_IN_TO_DAY = 13,
+};
+
+enum SettingSwitchType {
+  SETTING_SWITCH_IN_ISRAEL = 0,
+  SETTING_SWITCH_EARLY_TAKE_IN_ENABLED = 1,
+  SETTING_SWITCH_EARLY_TAKE_IN_APPLIES_TO_YOM_TOV = 2,
+};
+
 class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
  public:
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
@@ -33,12 +56,14 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void set_end_offset_minutes(int end_offset_minutes) { this->end_offset_minutes_ = end_offset_minutes; }
   void set_early_take_in_time(int hour, int minute) {
     this->has_early_take_in_ = true;
+    this->early_take_in_enabled_ = true;
     this->has_early_take_in_time_ = true;
     this->early_take_in_hour_ = hour;
     this->early_take_in_minute_ = minute;
   }
   void set_early_take_in_offset_minutes(int early_take_in_offset_minutes) {
     this->has_early_take_in_ = true;
+    this->early_take_in_enabled_ = true;
     this->early_take_in_offset_minutes_ = early_take_in_offset_minutes;
   }
   void set_early_take_in_for_yom_tov(bool early_take_in_for_yom_tov) {
@@ -46,18 +71,29 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
     this->early_take_in_for_yom_tov_ = early_take_in_for_yom_tov;
   }
   void set_early_take_in_plag_opinion(const std::string &plag_opinion);
+  void set_early_take_in_enabled(bool early_take_in_enabled) {
+    this->has_early_take_in_ = true;
+    this->early_take_in_enabled_ = early_take_in_enabled;
+  }
   void set_early_take_in_from(int month, int day) {
     this->has_early_take_in_ = true;
+    this->early_take_in_enabled_ = true;
     this->has_early_take_in_from_ = true;
     this->early_take_in_from_month_ = month;
     this->early_take_in_from_day_ = day;
   }
   void set_early_take_in_to(int month, int day) {
     this->has_early_take_in_ = true;
+    this->early_take_in_enabled_ = true;
     this->has_early_take_in_to_ = true;
     this->early_take_in_to_month_ = month;
     this->early_take_in_to_day_ = day;
   }
+  float get_setting_number_value(SettingNumberType type) const;
+  void set_setting_number_value(SettingNumberType type, float value);
+  bool get_setting_switch_value(SettingSwitchType type) const;
+  void set_setting_switch_value(SettingSwitchType type, bool value);
+  std::string get_plag_opinion_name() const;
 
   void setup() override;
   void update() override;
@@ -93,6 +129,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   int early_take_in_hour_{0};
   int early_take_in_minute_{0};
   int early_take_in_offset_minutes_{0};
+  bool early_take_in_enabled_{false};
   bool early_take_in_for_yom_tov_{false};
   PlagOpinion early_take_in_plag_opinion_{PLAG_OPINION_BAAL_HATANYA};
   bool has_early_take_in_from_{false};

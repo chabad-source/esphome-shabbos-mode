@@ -87,6 +87,124 @@ binary_sensor:
       - logger.log: "Shabbos or Yom Tov ended"
 ```
 
+## Web Server Runtime Controls
+
+ESPHome YAML is still compile-time configuration, but this component also supports runtime-editable companion entities that the ESPHome `web_server` can expose.
+
+Add `number`, `switch`, and `select` entities with `platform: shabbos_mode` and point them at the main binary sensor with `shabbos_mode_id`.
+
+```yaml
+web_server:
+
+binary_sensor:
+  - platform: shabbos_mode
+    id: shabbos_active
+    name: "Shabbos / Yom Tov Active"
+    time_id: ha_time
+    latitude: 40.66896
+    longitude: -73.94284
+    elevation: 34
+    in_israel: false
+    start_degree: 0.0
+    start_offset_minutes: -18
+    end_degree: 8.5
+    end_offset_minutes: 0
+    early_take_in:
+      plag_opinion: baal_hatanya
+
+number:
+  - platform: shabbos_mode
+    name: "Shabbos Latitude"
+    shabbos_mode_id: shabbos_active
+    type: latitude
+  - platform: shabbos_mode
+    name: "Shabbos Longitude"
+    shabbos_mode_id: shabbos_active
+    type: longitude
+  - platform: shabbos_mode
+    name: "Shabbos Start Offset"
+    shabbos_mode_id: shabbos_active
+    type: start_offset_minutes
+  - platform: shabbos_mode
+    name: "Shabbos End Degree"
+    shabbos_mode_id: shabbos_active
+    type: end_degree
+  - platform: shabbos_mode
+    name: "Early Take-In Hour"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_hour
+  - platform: shabbos_mode
+    name: "Early Take-In Minute"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_minute
+  - platform: shabbos_mode
+    name: "Early Take-In From Month"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_from_month
+  - platform: shabbos_mode
+    name: "Early Take-In From Day"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_from_day
+  - platform: shabbos_mode
+    name: "Early Take-In To Month"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_to_month
+  - platform: shabbos_mode
+    name: "Early Take-In To Day"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_to_day
+
+switch:
+  - platform: shabbos_mode
+    name: "In Israel"
+    shabbos_mode_id: shabbos_active
+    type: in_israel
+  - platform: shabbos_mode
+    name: "Early Take-In Enabled"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_enabled
+  - platform: shabbos_mode
+    name: "Early Take-In Applies To Yom Tov"
+    shabbos_mode_id: shabbos_active
+    type: early_take_in_applies_to_yom_tov
+
+select:
+  - platform: shabbos_mode
+    name: "Early Take-In Plag Opinion"
+    shabbos_mode_id: shabbos_active
+```
+
+Available `number` types:
+
+- `latitude`
+- `longitude`
+- `elevation`
+- `start_degree`
+- `start_offset_minutes`
+- `end_degree`
+- `end_offset_minutes`
+- `early_take_in_hour`
+- `early_take_in_minute`
+- `early_take_in_offset_minutes`
+- `early_take_in_from_month`
+- `early_take_in_from_day`
+- `early_take_in_to_month`
+- `early_take_in_to_day`
+
+Available `switch` types:
+
+- `in_israel`
+- `early_take_in_enabled`
+- `early_take_in_applies_to_yom_tov`
+
+The `select` companion entity controls `plag_opinion` with:
+
+- `baal_hatanya`
+- `gra`
+- `mga`
+
+At the moment, these web-editable companion entities change the running device state immediately, but they do not yet persist their values across reboot. The YAML values are still the startup defaults.
+
 ## Repository layout
 
 To use this as a git-based external component, keep the repository layout like this:
