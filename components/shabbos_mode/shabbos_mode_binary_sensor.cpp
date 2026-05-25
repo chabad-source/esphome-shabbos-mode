@@ -507,7 +507,7 @@ std::string ShabbosModeBinarySensor::get_setting_text_value(SettingTextType type
       if (!this->has_early_take_in_from_ && !this->has_early_take_in_to_) {
         return "";
       }
-      snprintf(buffer, sizeof(buffer), "%02d-%02d..%02d-%02d", this->early_take_in_from_month_, this->early_take_in_from_day_,
+      snprintf(buffer, sizeof(buffer), "%d/%d-%d/%d", this->early_take_in_from_month_, this->early_take_in_from_day_,
                this->early_take_in_to_month_, this->early_take_in_to_day_);
       return std::string(buffer);
   }
@@ -554,18 +554,27 @@ bool ShabbosModeBinarySensor::set_setting_text_value(SettingTextType type, const
         this->has_early_take_in_to_ = false;
         break;
       }
-      size_t separator = trimmed.find("..");
-      if (separator == std::string::npos) {
-        ESP_LOGW(TAG, "Invalid early take-in range '%s'. Expected 'MM-DD..MM-DD' or blank", value.c_str());
-        return false;
-      }
       int from_month = 0;
       int from_day = 0;
       int to_month = 0;
       int to_day = 0;
-      if (!this->parse_month_day_(trimmed.substr(0, separator), from_month, from_day) ||
-          !this->parse_month_day_(trimmed.substr(separator + 2), to_month, to_day)) {
-        ESP_LOGW(TAG, "Invalid early take-in range '%s'. Expected 'MM-DD..MM-DD' or blank", value.c_str());
+      bool parsed = false;
+
+      size_t dots_separator = trimmed.find("..");
+      if (dots_separator != std::string::npos) {
+        parsed = this->parse_month_day_(trimmed.substr(0, dots_separator), from_month, from_day) &&
+                 this->parse_month_day_(trimmed.substr(dots_separator + 2), to_month, to_day);
+      } else {
+        size_t dash_separator = trimmed.find("-");
+        if (dash_separator != std::string::npos) {
+          parsed = this->parse_month_day_(trimmed.substr(0, dash_separator), from_month, from_day) &&
+                   this->parse_month_day_(trimmed.substr(dash_separator + 1), to_month, to_day);
+        }
+      }
+
+      if (!parsed) {
+        ESP_LOGW(TAG, "Invalid early take-in range '%s'. Expected '5/1-9/15', '05-01..09-15', or blank",
+                 value.c_str());
         return false;
       }
       this->has_early_take_in_from_ = true;
@@ -740,6 +749,9 @@ bool ShabbosModeBinarySensor::parse_time_of_day_(const std::string &value, int &
 
 bool ShabbosModeBinarySensor::parse_month_day_(const std::string &value, int &month, int &day) const {
   size_t separator = value.find("-");
+  if (separator == std::string::npos) {
+    separator = value.find("/");
+  }
   if (separator == std::string::npos) {
     return false;
   }

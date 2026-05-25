@@ -95,7 +95,7 @@ The recommended setup keeps the entity count smaller by combining some related f
 
 - `location`: `latitude,longitude`
 - `early_take_in_time`: `HH:MM` or blank to use plag
-- `early_take_in_range`: `MM-DD..MM-DD` or blank to allow the feature all year
+- `early_take_in_range`: `5/1-9/15` or blank to allow the feature all year
 
 Add `text`, `number`, `switch`, and `select` entities with `platform: shabbos_mode` and point them at the main binary sensor with `shabbos_mode_id`.
 
@@ -218,7 +218,11 @@ Text input formats:
 
 - `location`: `40.66896,-73.94284`
 - `early_take_in_time`: `18:30` or blank to use plag
-- `early_take_in_range`: `05-01..09-15` or blank for always active
+- `early_take_in_range`: `5/1-9/15` or blank for always active
+
+The older `05-01..09-15` format is still accepted for backward compatibility.
+
+For YAML under `early_take_in.from` and `early_take_in.to`, keep using the existing `MM-DD` format such as `05-01` and `09-15`. The slash format is for the compact web text field.
 
 If a text value is invalid, the component keeps the previous value and logs a warning to the ESPHome logs.
 
