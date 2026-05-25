@@ -1,6 +1,7 @@
 #include "shabbos_mode_binary_sensor.h"
 
 #include <cmath>
+#include <cctype>
 #include <ctime>
 
 #include "esphome/core/log.h"
@@ -16,6 +17,9 @@ void ShabbosModeBinarySensor::setup() {
     ESP_LOGW(TAG, "No time source configured");
     return;
   }
+
+  this->settings_pref_ = this->make_entity_preference<RuntimeSettings>(0x534d0101);
+  this->load_runtime_settings_();
 
   auto now = this->time_->now();
   if (!now.is_valid()) {
@@ -349,13 +353,15 @@ hdate ShabbosModeBinarySensor::calculate_next_transition_(const ESPTime &now, bo
 void ShabbosModeBinarySensor::set_early_take_in_plag_opinion(const std::string &plag_opinion) {
   this->has_early_take_in_ = true;
   this->early_take_in_enabled_ = true;
-  if (plag_opinion == "gra") {
+  std::string normalized = this->normalize_plag_opinion_(plag_opinion);
+  if (normalized == "gra") {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_GRA;
-  } else if (plag_opinion == "mga") {
+  } else if (normalized == "mga") {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_MGA;
   } else {
     this->early_take_in_plag_opinion_ = PLAG_OPINION_BAAL_HATANYA;
   }
+  this->save_runtime_settings_();
 }
 
 float ShabbosModeBinarySensor::get_setting_number_value(SettingNumberType type) const {
@@ -450,6 +456,7 @@ void ShabbosModeBinarySensor::set_setting_number_value(SettingNumberType type, f
       this->early_take_in_to_day_ = static_cast<int>(value);
       break;
   }
+  this->save_runtime_settings_();
 }
 
 bool ShabbosModeBinarySensor::get_setting_switch_value(SettingSwitchType type) const {
@@ -478,17 +485,18 @@ void ShabbosModeBinarySensor::set_setting_switch_value(SettingSwitchType type, b
       this->early_take_in_for_yom_tov_ = value;
       break;
   }
+  this->save_runtime_settings_();
 }
 
 std::string ShabbosModeBinarySensor::get_plag_opinion_name() const {
   switch (this->early_take_in_plag_opinion_) {
     case PLAG_OPINION_GRA:
-      return "gra";
+      return "Gra";
     case PLAG_OPINION_MGA:
-      return "mga";
+      return "MGA";
     case PLAG_OPINION_BAAL_HATANYA:
     default:
-      return "baal_hatanya";
+      return "Baal HaTanya";
   }
 }
 
@@ -578,6 +586,84 @@ std::string ShabbosModeBinarySensor::format_hebrew_date_(const hdate &date) cons
   char buffer[48];
   snprintf(buffer, sizeof(buffer), "%d %s %d", date.day, month_name, date.year);
   return std::string(buffer);
+}
+
+void ShabbosModeBinarySensor::load_runtime_settings_() {
+  RuntimeSettings settings{};
+  if (!this->settings_pref_.load(&settings)) {
+    this->settings_loaded_ = true;
+    return;
+  }
+
+  this->latitude_ = settings.latitude;
+  this->longitude_ = settings.longitude;
+  this->elevation_ = settings.elevation;
+  this->in_israel_ = settings.in_israel;
+  this->start_degree_ = settings.start_degree;
+  this->start_offset_minutes_ = settings.start_offset_minutes;
+  this->end_degree_ = settings.end_degree;
+  this->end_offset_minutes_ = settings.end_offset_minutes;
+  this->has_early_take_in_ = settings.has_early_take_in;
+  this->has_early_take_in_time_ = settings.has_early_take_in_time;
+  this->early_take_in_hour_ = settings.early_take_in_hour;
+  this->early_take_in_minute_ = settings.early_take_in_minute;
+  this->early_take_in_offset_minutes_ = settings.early_take_in_offset_minutes;
+  this->early_take_in_enabled_ = settings.early_take_in_enabled;
+  this->early_take_in_for_yom_tov_ = settings.early_take_in_for_yom_tov;
+  this->early_take_in_plag_opinion_ = static_cast<PlagOpinion>(settings.early_take_in_plag_opinion);
+  this->has_early_take_in_from_ = settings.has_early_take_in_from;
+  this->early_take_in_from_month_ = settings.early_take_in_from_month;
+  this->early_take_in_from_day_ = settings.early_take_in_from_day;
+  this->has_early_take_in_to_ = settings.has_early_take_in_to;
+  this->early_take_in_to_month_ = settings.early_take_in_to_month;
+  this->early_take_in_to_day_ = settings.early_take_in_to_day;
+  this->settings_loaded_ = true;
+}
+
+void ShabbosModeBinarySensor::save_runtime_settings_() {
+  if (!this->settings_loaded_) {
+    return;
+  }
+
+  RuntimeSettings settings{};
+  settings.latitude = this->latitude_;
+  settings.longitude = this->longitude_;
+  settings.elevation = this->elevation_;
+  settings.in_israel = this->in_israel_;
+  settings.start_degree = this->start_degree_;
+  settings.start_offset_minutes = this->start_offset_minutes_;
+  settings.end_degree = this->end_degree_;
+  settings.end_offset_minutes = this->end_offset_minutes_;
+  settings.has_early_take_in = this->has_early_take_in_;
+  settings.has_early_take_in_time = this->has_early_take_in_time_;
+  settings.early_take_in_hour = this->early_take_in_hour_;
+  settings.early_take_in_minute = this->early_take_in_minute_;
+  settings.early_take_in_offset_minutes = this->early_take_in_offset_minutes_;
+  settings.early_take_in_enabled = this->early_take_in_enabled_;
+  settings.early_take_in_for_yom_tov = this->early_take_in_for_yom_tov_;
+  settings.early_take_in_plag_opinion = static_cast<uint8_t>(this->early_take_in_plag_opinion_);
+  settings.has_early_take_in_from = this->has_early_take_in_from_;
+  settings.early_take_in_from_month = this->early_take_in_from_month_;
+  settings.early_take_in_from_day = this->early_take_in_from_day_;
+  settings.has_early_take_in_to = this->has_early_take_in_to_;
+  settings.early_take_in_to_month = this->early_take_in_to_month_;
+  settings.early_take_in_to_day = this->early_take_in_to_day_;
+  this->settings_pref_.save(&settings);
+}
+
+void ShabbosModeBinarySensor::save_runtime_settings() { this->save_runtime_settings_(); }
+
+std::string ShabbosModeBinarySensor::normalize_plag_opinion_(const std::string &plag_opinion) const {
+  std::string normalized;
+  normalized.reserve(plag_opinion.size());
+  for (char c : plag_opinion) {
+    if (c == ' ' || c == '-') {
+      normalized.push_back('_');
+    } else {
+      normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+  }
+  return normalized;
 }
 
 bool ShabbosModeBinarySensor::is_valid_event_(const hdate &date) const { return date.year != 0; }

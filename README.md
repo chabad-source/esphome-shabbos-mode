@@ -223,9 +223,9 @@ Available `switch` types:
 
 The `select` companion entity controls `plag_opinion` with:
 
-- `baal_hatanya`
-- `gra`
-- `mga`
+- `Baal HaTanya`
+- `Gra`
+- `MGA`
 
 Available `text_sensor` types:
 
@@ -238,13 +238,15 @@ Text sensor formats:
 - `next_turn_on` and `next_turn_off` default to a friendly local format like `Fri, Apr 23, 6:32 PM`
 - `current_hebrew_date` is formatted like `23 Nissan 5786`
 
-At the moment, these web-editable companion entities change the running device state immediately, but they do not yet persist their values across reboot. The YAML values are still the startup defaults.
+These web-editable companion entities change the running device state immediately and now persist across reboot. Once you edit a runtime control from the web UI, the restored runtime value takes precedence over the YAML startup default on future boots.
 
 ## Advanced: Set Values From Lambda
 
 You can also change the main component directly from an ESPHome `lambda`, for example in `on_boot`, a button press, or another automation.
 
 After changing values, call `update()` so the binary sensor recalculates immediately instead of waiting for the next poll interval.
+
+If you want lambda-based changes to also persist across reboot, call `save_runtime_settings()` after setting the new values.
 
 ```yaml
 esphome:
@@ -269,6 +271,7 @@ esphome:
           id(shabbos_active).set_early_take_in_from(5, 1);
           id(shabbos_active).set_early_take_in_to(9, 15);
 
+          id(shabbos_active).save_runtime_settings();
           id(shabbos_active).update();
 ```
 
@@ -283,7 +286,7 @@ Available direct setters:
 - `set_end_degree(double end_degree)`
 - `set_end_offset_minutes(int minutes)`
 - `set_early_take_in_enabled(bool enabled)`
-- `set_early_take_in_plag_opinion(const std::string &opinion)` with `baal_hatanya`, `gra`, or `mga`
+- `set_early_take_in_plag_opinion(const std::string &opinion)` with `baal_hatanya`, `gra`, `mga`, `Baal HaTanya`, `Gra`, or `MGA`
 - `set_early_take_in_time(int hour, int minute)`
 - `set_early_take_in_offset_minutes(int minutes)`
 - `set_early_take_in_for_yom_tov(bool enabled)`

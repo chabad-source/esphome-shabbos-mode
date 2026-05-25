@@ -23,6 +23,6 @@ CONFIG_SCHEMA = select.select_schema(
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await select.register_select(var, config, options=["baal_hatanya", "gra", "mga"])
+    await select.register_select(var, config, options=["Baal HaTanya", "Gra", "MGA"])
     await cg.register_component(var, config)
     await cg.register_parented(var, config[CONF_SHABBOS_MODE_ID])

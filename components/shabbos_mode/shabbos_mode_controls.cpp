@@ -28,7 +28,7 @@ void ShabbosModeSettingSwitch::write_state(bool state) {
 }
 
 void ShabbosModePlagOpinionSelect::setup() {
-  this->traits.set_options({"baal_hatanya", "gra", "mga"});
+  this->traits.set_options({"Baal HaTanya", "Gra", "MGA"});
   this->publish_state(this->parent_->get_plag_opinion_name());
 }
 
