@@ -1,0 +1,10 @@
+Vendored files in components/shabbos_mode/hebrewcalendar.c,
+components/shabbos_mode/hebrewcalendar.h,
+components/shabbos_mode/NOAAcalculator.c, and
+components/shabbos_mode/NOAAcalculator.h are copied from:
+
+https://github.com/yparitcher/libzmanim
+
+Original project license: LGPL-2.1-or-later
+
+Copyright (c) 2018 Y Paritcher
