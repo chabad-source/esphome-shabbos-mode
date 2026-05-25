@@ -23,6 +23,14 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void set_start_offset_minutes(int start_offset_minutes) { this->start_offset_minutes_ = start_offset_minutes; }
   void set_end_degree(double end_degree) { this->end_degree_ = end_degree; }
   void set_end_offset_minutes(int end_offset_minutes) { this->end_offset_minutes_ = end_offset_minutes; }
+  void set_early_take_in_time(int hour, int minute) {
+    this->has_early_take_in_ = true;
+    this->early_take_in_hour_ = hour;
+    this->early_take_in_minute_ = minute;
+  }
+  void set_early_take_in_for_yom_tov(bool early_take_in_for_yom_tov) {
+    this->early_take_in_for_yom_tov_ = early_take_in_for_yom_tov;
+  }
 
   void setup() override;
   void update() override;
@@ -33,9 +41,11 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   hdate calculate_date_event_(hdate date, double degree, int offset_minutes) const;
   hdate calculate_start_event_(hdate date) const;
   hdate calculate_end_event_(hdate date) const;
+  hdate calculate_early_take_in_event_(hdate date) const;
   hdate get_date_from_utc_time_(hdate current, double time, bool is_sunrise) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
+  bool should_apply_early_take_in_(hdate date) const;
   bool is_valid_event_(const hdate &date) const;
 
   time::RealTimeClock *time_{nullptr};
@@ -47,6 +57,10 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   int start_offset_minutes_{-18};
   double end_degree_{8.5};
   int end_offset_minutes_{0};
+  bool has_early_take_in_{false};
+  int early_take_in_hour_{0};
+  int early_take_in_minute_{0};
+  bool early_take_in_for_yom_tov_{false};
 };
 
 }  // namespace shabbos_mode

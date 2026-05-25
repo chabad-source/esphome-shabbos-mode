@@ -49,6 +49,10 @@ void ShabbosModeBinarySensor::dump_config() {
   ESP_LOGCONFIG(TAG, "  Start offset: %d min", this->start_offset_minutes_);
   ESP_LOGCONFIG(TAG, "  End degree: %.2f", this->end_degree_);
   ESP_LOGCONFIG(TAG, "  End offset: %d min", this->end_offset_minutes_);
+  if (this->has_early_take_in_) {
+    ESP_LOGCONFIG(TAG, "  Early take-in time: %02d:%02d", this->early_take_in_hour_, this->early_take_in_minute_);
+    ESP_LOGCONFIG(TAG, "  Early take-in applies to Yom Tov: %s", YESNO(this->early_take_in_for_yom_tov_));
+  }
   LOG_UPDATE_INTERVAL(this);
 }
 
@@ -82,11 +86,32 @@ hdate ShabbosModeBinarySensor::calculate_start_event_(hdate date) const {
   if (iscandlelighting(date) == 2) {
     return this->calculate_date_event_(date, this->end_degree_, this->end_offset_minutes_);
   }
-  return this->calculate_date_event_(date, this->start_degree_, this->start_offset_minutes_);
+
+  hdate start = this->calculate_date_event_(date, this->start_degree_, this->start_offset_minutes_);
+  if (!this->should_apply_early_take_in_(date)) {
+    return start;
+  }
+
+  hdate early_start = this->calculate_early_take_in_event_(date);
+  if (!this->is_valid_event_(early_start)) {
+    return start;
+  }
+
+  if (!this->is_valid_event_(start) || hdatecompare(early_start, start) == 1) {
+    return early_start;
+  }
+  return start;
 }
 
 hdate ShabbosModeBinarySensor::calculate_end_event_(hdate date) const {
   return this->calculate_date_event_(date, this->end_degree_, this->end_offset_minutes_);
+}
+
+hdate ShabbosModeBinarySensor::calculate_early_take_in_event_(hdate date) const {
+  hdate result = hdatenew(date.year, date.month, date.day, this->early_take_in_hour_, this->early_take_in_minute_, 0, 0,
+                          date.offset);
+  setEY(&result, date.EY);
+  return result;
 }
 
 hdate ShabbosModeBinarySensor::calculate_date_event_(hdate date, double degree, int offset_minutes) const {
@@ -154,6 +179,16 @@ int ShabbosModeBinarySensor::get_antimeridian_adjustment_(hdate current) const {
 
 long ShabbosModeBinarySensor::get_local_mean_time_offset_(hdate current) const {
   return static_cast<long>(this->longitude_ * 4 * 60 - current.offset);
+}
+
+bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date) const {
+  if (!this->has_early_take_in_ || iscandlelighting(date) != 1) {
+    return false;
+  }
+  if (date.wday == 6) {
+    return true;
+  }
+  return this->early_take_in_for_yom_tov_;
 }
 
 bool ShabbosModeBinarySensor::is_valid_event_(const hdate &date) const { return date.year != 0; }

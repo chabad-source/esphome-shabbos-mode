@@ -11,8 +11,17 @@ Use the binary sensor's built-in `on_press` action for the start of Shabbos/Yom 
 - `end_degree`: degrees below the horizon for the end boundary
 - `end_offset_minutes`: minutes added after the end degree calculation, or subtracted when negative
 - `in_israel`: controls one-day vs two-day Yom Tov handling
+- `early_take_in`: optional wall-clock time for taking in Shabbos or Yom Tov early
 
 `start_degree: 0` means sunset. A common setup is `start_degree: 0` with `start_offset_minutes: -18`, and `end_degree: 8.5` with `end_offset_minutes: 0`.
+
+For early take-in, add:
+
+- `early_take_in.time`: local time in `HH:MM`
+- `early_take_in.applies_to: shabbos` for Fridays only
+- `early_take_in.applies_to: shabbos_and_yom_tov` for both Fridays and Erev Yom Tov
+
+The early time only overrides the regular start when it is earlier than the normal calculated start. It does not apply to second-night Yom Tov starts that begin at nightfall.
 
 ## Example
 
@@ -39,6 +48,9 @@ binary_sensor:
     start_offset_minutes: -18
     end_degree: 8.5
     end_offset_minutes: 0
+    early_take_in:
+      time: "18:30"
+      applies_to: shabbos
     on_press:
       - logger.log: "Shabbos or Yom Tov started"
     on_release:

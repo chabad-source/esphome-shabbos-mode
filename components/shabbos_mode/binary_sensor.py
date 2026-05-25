@@ -14,6 +14,16 @@ CONF_START_DEGREE = "start_degree"
 CONF_START_OFFSET_MINUTES = "start_offset_minutes"
 CONF_END_DEGREE = "end_degree"
 CONF_END_OFFSET_MINUTES = "end_offset_minutes"
+CONF_EARLY_TAKE_IN = "early_take_in"
+CONF_TIME = "time"
+CONF_APPLIES_TO = "applies_to"
+
+EARLY_TAKE_IN_APPLIES_TO = {
+    "shabbos": "shabbos",
+    "shabbos_and_yom_tov": "shabbos_and_yom_tov",
+}
+
+TIME_OF_DAY_RE = cv.All(cv.string_strict, cv.matches_regex(r"^(?:[01]\d|2[0-3]):[0-5]\d$"))
 
 shabbos_mode_ns = cg.esphome_ns.namespace("shabbos_mode")
 ShabbosModeBinarySensor = shabbos_mode_ns.class_(
@@ -33,6 +43,14 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_START_OFFSET_MINUTES, default=-18): cv.int_range(min=-300, max=300),
             cv.Optional(CONF_END_DEGREE, default=8.5): cv.float_range(min=0.0, max=30.0),
             cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
+            cv.Optional(CONF_EARLY_TAKE_IN): cv.Schema(
+                {
+                    cv.Required(CONF_TIME): TIME_OF_DAY_RE,
+                    cv.Optional(CONF_APPLIES_TO, default="shabbos"): cv.enum(
+                        EARLY_TAKE_IN_APPLIES_TO, lower=True
+                    ),
+                }
+            ),
         }
     )
     .extend(cv.polling_component_schema("30s"))
@@ -54,3 +72,12 @@ async def to_code(config):
     cg.add(var.set_start_offset_minutes(config[CONF_START_OFFSET_MINUTES]))
     cg.add(var.set_end_degree(config[CONF_END_DEGREE]))
     cg.add(var.set_end_offset_minutes(config[CONF_END_OFFSET_MINUTES]))
+    if CONF_EARLY_TAKE_IN in config:
+        early_take_in = config[CONF_EARLY_TAKE_IN]
+        hour, minute = [int(part) for part in early_take_in[CONF_TIME].split(":")]
+        cg.add(var.set_early_take_in_time(hour, minute))
+        cg.add(
+            var.set_early_take_in_for_yom_tov(
+                early_take_in[CONF_APPLIES_TO] == "shabbos_and_yom_tov"
+            )
+        )
