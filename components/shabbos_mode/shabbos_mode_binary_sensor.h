@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/time/real_time_clock.h"
@@ -61,26 +63,16 @@ enum SettingTextType {
 class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
  public:
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-  void set_latitude(double latitude) { this->latitude_ = latitude; }
-  void set_longitude(double longitude) { this->longitude_ = longitude; }
-  void set_elevation(double elevation) { this->elevation_ = elevation; }
+  void set_latitude(double latitude);
+  void set_longitude(double longitude);
+  void set_elevation(double elevation);
   void set_in_israel(bool in_israel) { this->in_israel_ = in_israel; }
-  void set_start_degree(double start_degree) { this->start_degree_ = start_degree; }
-  void set_start_offset_minutes(int start_offset_minutes) { this->start_offset_minutes_ = start_offset_minutes; }
-  void set_end_degree(double end_degree) { this->end_degree_ = end_degree; }
-  void set_end_offset_minutes(int end_offset_minutes) { this->end_offset_minutes_ = end_offset_minutes; }
-  void set_early_take_in_time(int hour, int minute) {
-    this->has_early_take_in_ = true;
-    this->early_take_in_enabled_ = true;
-    this->has_early_take_in_time_ = true;
-    this->early_take_in_hour_ = hour;
-    this->early_take_in_minute_ = minute;
-  }
-  void set_early_take_in_offset_minutes(int early_take_in_offset_minutes) {
-    this->has_early_take_in_ = true;
-    this->early_take_in_enabled_ = true;
-    this->early_take_in_offset_minutes_ = early_take_in_offset_minutes;
-  }
+  void set_start_degree(double start_degree);
+  void set_start_offset_minutes(int start_offset_minutes);
+  void set_end_degree(double end_degree);
+  void set_end_offset_minutes(int end_offset_minutes);
+  void set_early_take_in_time(int hour, int minute);
+  void set_early_take_in_offset_minutes(int early_take_in_offset_minutes);
   void set_early_take_in_for_yom_tov(bool early_take_in_for_yom_tov) {
     this->has_early_take_in_ = true;
     this->early_take_in_for_yom_tov_ = early_take_in_for_yom_tov;
@@ -90,20 +82,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
     this->has_early_take_in_ = true;
     this->early_take_in_enabled_ = early_take_in_enabled;
   }
-  void set_early_take_in_from(int month, int day) {
-    this->has_early_take_in_ = true;
-    this->early_take_in_enabled_ = true;
-    this->has_early_take_in_from_ = true;
-    this->early_take_in_from_month_ = month;
-    this->early_take_in_from_day_ = day;
-  }
-  void set_early_take_in_to(int month, int day) {
-    this->has_early_take_in_ = true;
-    this->early_take_in_enabled_ = true;
-    this->has_early_take_in_to_ = true;
-    this->early_take_in_to_month_ = month;
-    this->early_take_in_to_day_ = day;
-  }
+  void set_early_take_in_from(int month, int day);
+  void set_early_take_in_to(int month, int day);
   float get_setting_number_value(SettingNumberType type) const;
   void set_setting_number_value(SettingNumberType type, float value);
   bool get_setting_switch_value(SettingSwitchType type) const;
@@ -118,11 +98,13 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void register_event_text_sensor(ShabbosModeEventTextSensor *sensor);
 
   void setup() override;
+  void loop() override;
   void update() override;
   void dump_config() override;
 
  protected:
   bool compute_active_(const ESPTime &now) const;
+  bool compute_active_(hdate current) const;
   hdate calculate_date_event_(hdate date, double degree, int offset_minutes) const;
   hdate calculate_start_event_(hdate date, int current_month, int current_day) const;
   hdate calculate_end_event_(hdate date) const;
@@ -139,13 +121,21 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   bool parse_month_day_(const std::string &value, int &month, int &day) const;
   void load_runtime_settings_();
   void save_runtime_settings_();
+  void request_runtime_settings_save_();
   void notify_runtime_settings_changed_();
   std::string normalize_plag_opinion_(const std::string &plag_opinion) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
   bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;
   bool is_in_early_take_in_range_(int current_month, int current_day) const;
-  int month_day_to_ordinal_(int month, int day) const;
+  bool is_actual_transition_(hdate event, bool want_turn_on) const;
+  bool is_month_day_before_or_equal_(int left_month, int left_day, int right_month, int right_day) const;
+  bool is_valid_month_day_(int month, int day) const;
+  int max_day_for_month_(int month) const;
+  int clamp_day_for_month_(int month, int day) const;
+  int clamp_int_(int value, int min_value, int max_value) const;
+  double clamp_double_(double value, double min_value, double max_value) const;
+  void sanitize_runtime_settings_();
   bool is_valid_event_(const hdate &date) const;
 
   time::RealTimeClock *time_{nullptr};
@@ -197,6 +187,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
     int early_take_in_to_day;
   };
   ESPPreferenceObject settings_pref_;
+  bool settings_dirty_{false};
+  uint32_t settings_dirty_at_{0};
   std::vector<ShabbosModeEventTextSensor *> event_text_sensors_;
 };
 

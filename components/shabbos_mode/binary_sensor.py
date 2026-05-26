@@ -28,6 +28,21 @@ PLAG_OPINIONS = {
     "mga": "mga",
 }
 
+MAX_DAYS_BY_MONTH = {
+    1: 31,
+    2: 29,
+    3: 31,
+    4: 30,
+    5: 31,
+    6: 30,
+    7: 31,
+    8: 31,
+    9: 30,
+    10: 31,
+    11: 30,
+    12: 31,
+}
+
 
 def validate_time_of_day(value):
     value = cv.string_strict(value)
@@ -48,8 +63,9 @@ def validate_month_day(value):
         raise cv.Invalid("date must be in MM-DD format")
     month = int(parts[0])
     day = int(parts[1])
-    if month < 1 or month > 12 or day < 1 or day > 31:
-        raise cv.Invalid("date must be in MM-DD format")
+    max_day = MAX_DAYS_BY_MONTH.get(month)
+    if max_day is None or day < 1 or day > max_day:
+        raise cv.Invalid("date must be a real calendar date in MM-DD format")
     return f"{month:02d}-{day:02d}"
 
 shabbos_mode_ns = cg.esphome_ns.namespace("shabbos_mode")

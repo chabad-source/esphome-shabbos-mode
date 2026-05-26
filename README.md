@@ -1,61 +1,14 @@
 # Shabbos Mode ESPHome External Component
 
-This repository contains an ESPHome external component that exposes a binary sensor which is `ON` during Shabbos or Yom Tov.
+An ESPHome external component that exposes a binary sensor which is `ON` during Shabbos or Yom Tov.
 
-Use the binary sensor's built-in `on_press` action for the start of Shabbos/Yom Tov, and `on_release` for the end.
+Use the binary sensor's `on_press` automation for the start of Shabbos/Yom Tov, and `on_release` for the end.
 
-## What it supports
-
-- `start_degree`: degrees below the horizon for the start boundary
-- `start_offset_minutes`: minutes added after the start degree calculation, or subtracted when negative
-- `end_degree`: degrees below the horizon for the end boundary
-- `end_offset_minutes`: minutes added after the end degree calculation, or subtracted when negative
-- `in_israel`: controls one-day vs two-day Yom Tov handling
-- `early_take_in`: optional plag-based early take-in settings
-
-`start_degree: 0` means sunset. A common setup is `start_degree: 0` with `start_offset_minutes: -18`, and `end_degree: 8.5` with `end_offset_minutes: 0`.
-
-For early take-in, the component uses `plag hamincha` as the earliest valid start.
-
-- `early_take_in.time`: optional local time in `HH:MM`
-- `early_take_in.offset_minutes`: optional minutes added to the requested early time
-- `early_take_in.plag_opinion`: `baal_hatanya`, `gra`, or `mga`
-- `early_take_in.applies_to_yom_tov`: `true` to also allow early starts on Erev Yom Tov
-- `early_take_in.from`: optional Gregorian start date in `MM-DD`
-- `early_take_in.to`: optional Gregorian end date in `MM-DD`
-
-Defaults:
-
-- if `time` is omitted, the requested early time defaults to `plag`
-- if `offset_minutes` is omitted, it defaults to `0`
-- if `plag_opinion` is omitted, it defaults to `baal_hatanya`
-- if `applies_to_yom_tov` is omitted, it defaults to `false`
-- if `from` and `to` are omitted, early take-in is eligible all year
-
-How the early take-in time is chosen:
-
-- start with the requested time, or `plag` if no time was provided
-- apply `offset_minutes`
-- never allow the result to be earlier than `plag`
-- only use the early-take-in result if it is earlier than the normal calculated start
-
-This means the effective early start is:
-
-```text
-final_early_start = max(plag, requested_time_or_plag + offset)
-```
-
-Then the component compares that against the normal start and uses whichever is earlier.
-
-This feature does not apply to second-night Yom Tov starts that begin at nightfall.
-
-## Example
+## Quick Start
 
 ```yaml
 external_components:
-  - source:
-      type: local
-      path: /config/esphome/shabbos_mode
+  - source: github://chabad-source/esphome-shabbos-mode@main
     components: [shabbos_mode]
 
 time:
@@ -64,7 +17,9 @@ time:
 
 binary_sensor:
   - platform: shabbos_mode
+    id: shabbos_active
     name: "Shabbos / Yom Tov Active"
+    icon: mdi:candelabra
     time_id: ha_time
     latitude: 40.66896
     longitude: -73.94284
@@ -74,6 +29,42 @@ binary_sensor:
     start_offset_minutes: -18
     end_degree: 8.5
     end_offset_minutes: 0
+    on_press:
+      - logger.log: "Shabbos or Yom Tov started"
+    on_release:
+      - logger.log: "Shabbos or Yom Tov ended"
+```
+
+For local development, replace the GitHub source with:
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: /config/esphome/esphome-shabbos-mode
+    components: [shabbos_mode]
+```
+
+## Main Options
+
+- `latitude` and `longitude`: required location coordinates.
+- `elevation`: optional elevation in meters, default `0`.
+- `in_israel`: controls one-day vs two-day Yom Tov handling, default `false`.
+- `start_degree`: degrees below the geometric horizon for the start boundary, default `0`.
+- `start_offset_minutes`: minutes added to the start time, default `-18`.
+- `end_degree`: degrees below the geometric horizon for the end boundary, default `8.5`.
+- `end_offset_minutes`: minutes added to the end time, default `0`.
+
+`start_degree: 0` means sunset. A common setup is candle lighting at 18 minutes before sunset, with Shabbos/Yom Tov ending at 8.5 degrees.
+
+## Early Take-In
+
+Early take-in is optional and plag-based. When enabled, the component will never start earlier than the selected plag hamincha opinion.
+
+```yaml
+binary_sensor:
+  - platform: shabbos_mode
+    # ...
     early_take_in:
       time: "18:30"
       offset_minutes: 0
@@ -81,23 +72,33 @@ binary_sensor:
       applies_to_yom_tov: false
       from: "05-01"
       to: "09-15"
-    on_press:
-      - logger.log: "Shabbos or Yom Tov started"
-    on_release:
-      - logger.log: "Shabbos or Yom Tov ended"
 ```
+
+Early take-in options:
+
+- `time`: optional local time in `HH:MM`. If omitted, the requested early time is plag.
+- `offset_minutes`: optional minutes added to the requested early time, default `0`.
+- `plag_opinion`: `baal_hatanya`, `gra`, or `mga`, default `baal_hatanya`.
+- `applies_to_yom_tov`: when `true`, also applies on Erev Yom Tov, default `false`.
+- `from` and `to`: optional Gregorian range in `MM-DD`. If omitted, the rule is eligible all year.
+
+Effective early start:
+
+```text
+final_early_start = max(plag, requested_time_or_plag + offset_minutes)
+```
+
+The component then compares that early start against the normal start and uses whichever is earlier. Early take-in applies only to first-night starts. It does not apply to second-night Yom Tov starts, which begin at nightfall.
 
 ## Web Server Runtime Controls
 
-ESPHome YAML is still compile-time configuration, but this component also supports runtime-editable companion entities that the ESPHome `web_server` can expose.
+ESPHome YAML is the startup default, but this component also supports runtime-editable companion entities for the ESPHome `web_server`. Runtime edits apply immediately and are persisted across reboot. Writes are debounced before saving to flash.
 
-The recommended setup keeps the entity count smaller by combining some related fields into editable text entries:
+The compact setup below keeps the web UI smaller by combining related fields into text entries:
 
-- `location`: `latitude,longitude`
-- `early_take_in_time`: `HH:MM` or blank to use plag
-- `early_take_in_range`: `5/1-9/15` or blank to allow the feature all year
-
-Add `text`, `number`, `switch`, and `select` entities with `platform: shabbos_mode` and point them at the main binary sensor with `shabbos_mode_id`.
+- `location`: `latitude,longitude`, for example `40.66896,-73.94284`
+- `early_take_in_time`: `HH:MM`, or blank to use plag
+- `early_take_in_range`: `5/1-9/15`, or blank to allow all year
 
 ```yaml
 web_server:
@@ -106,6 +107,7 @@ binary_sensor:
   - platform: shabbos_mode
     id: shabbos_active
     name: "Shabbos / Yom Tov Active"
+    icon: mdi:candelabra
     time_id: ha_time
     latitude: 40.66896
     longitude: -73.94284
@@ -115,22 +117,23 @@ binary_sensor:
     start_offset_minutes: -18
     end_degree: 8.5
     end_offset_minutes: 0
-    early_take_in:
-      plag_opinion: baal_hatanya
 
 text:
   - platform: shabbos_mode
     name: "Shabbos Location"
+    icon: mdi:map-marker
     shabbos_mode_id: shabbos_active
     type: location
     mode: text
   - platform: shabbos_mode
     name: "Early Take-In Time"
+    icon: mdi:clock-start
     shabbos_mode_id: shabbos_active
     type: early_take_in_time
     mode: text
   - platform: shabbos_mode
     name: "Early Take-In Range"
+    icon: mdi:calendar-range
     shabbos_mode_id: shabbos_active
     type: early_take_in_range
     mode: text
@@ -138,21 +141,25 @@ text:
 number:
   - platform: shabbos_mode
     name: "Shabbos Start Offset"
+    icon: mdi:timer-minus
     shabbos_mode_id: shabbos_active
     type: start_offset_minutes
     mode: box
   - platform: shabbos_mode
-    name: "Shabbos End Offset"
-    shabbos_mode_id: shabbos_active
-    type: end_offset_minutes
-    mode: box
-  - platform: shabbos_mode
     name: "Shabbos End Degree"
+    icon: mdi:weather-sunset-down
     shabbos_mode_id: shabbos_active
     type: end_degree
     mode: box
   - platform: shabbos_mode
+    name: "Shabbos End Offset"
+    icon: mdi:timer-plus
+    shabbos_mode_id: shabbos_active
+    type: end_offset_minutes
+    mode: box
+  - platform: shabbos_mode
     name: "Early Take-In Offset"
+    icon: mdi:timer-cog
     shabbos_mode_id: shabbos_active
     type: early_take_in_offset_minutes
     mode: box
@@ -160,36 +167,49 @@ number:
 switch:
   - platform: shabbos_mode
     name: "In Israel"
+    icon: mdi:map
     shabbos_mode_id: shabbos_active
     type: in_israel
   - platform: shabbos_mode
     name: "Early Take-In Enabled"
+    icon: mdi:clock-check
     shabbos_mode_id: shabbos_active
     type: early_take_in_enabled
   - platform: shabbos_mode
     name: "Early Take-In Applies To Yom Tov"
+    icon: mdi:calendar-star
     shabbos_mode_id: shabbos_active
     type: early_take_in_applies_to_yom_tov
 
 select:
   - platform: shabbos_mode
     name: "Early Take-In Plag Opinion"
+    icon: mdi:book-open-variant
     shabbos_mode_id: shabbos_active
 
 text_sensor:
   - platform: shabbos_mode
     name: "Next Shabbos Mode Turn On"
+    icon: mdi:calendar-clock
     shabbos_mode_id: shabbos_active
     type: next_turn_on
   - platform: shabbos_mode
     name: "Next Shabbos Mode Turn Off"
+    icon: mdi:calendar-clock
     shabbos_mode_id: shabbos_active
     type: next_turn_off
   - platform: shabbos_mode
     name: "Current Hebrew Date"
+    icon: mdi:calendar-today
     shabbos_mode_id: shabbos_active
     type: current_hebrew_date
 ```
+
+If a text value is invalid, the component keeps the previous value and logs a warning to the ESPHome logs.
+
+The `early_take_in_range` text field accepts `5/1-9/15`. The older `05-01..09-15` format is still accepted for backward compatibility. YAML `early_take_in.from` and `early_take_in.to` should use `MM-DD`, such as `05-01`.
+
+## Companion Entity Types
 
 Available `number` types:
 
@@ -214,52 +234,66 @@ Available `text` types:
 - `early_take_in_time`
 - `early_take_in_range`
 
-Text input formats:
-
-- `location`: `40.66896,-73.94284`
-- `early_take_in_time`: `18:30` or blank to use plag
-- `early_take_in_range`: `5/1-9/15` or blank for always active
-
-The older `05-01..09-15` format is still accepted for backward compatibility.
-
-For YAML under `early_take_in.from` and `early_take_in.to`, keep using the existing `MM-DD` format such as `05-01` and `09-15`. The slash format is for the compact web text field.
-
-If a text value is invalid, the component keeps the previous value and logs a warning to the ESPHome logs.
-
 Available `switch` types:
 
 - `in_israel`
 - `early_take_in_enabled`
 - `early_take_in_applies_to_yom_tov`
 
-The `select` companion entity controls `plag_opinion` with:
-
-- `Baal HaTanya`
-- `Gra`
-- `MGA`
+The `select` companion entity controls plag opinion with the web-friendly labels `Baal HaTanya`, `Gra`, and `MGA`.
 
 Available `text_sensor` types:
 
-- `next_turn_on`
-- `next_turn_off`
+- `next_turn_on`: next actual state transition to `ON`
+- `next_turn_off`: next actual state transition to `OFF`
 - `current_hebrew_date`
 
-Text sensor formats:
+The transition text sensors use a friendly local format like `Fri, Apr 23, 6:32 PM`. The Hebrew date sensor is formatted like `23 Nissan 5786`.
 
-- `next_turn_on` and `next_turn_off` default to a friendly local format like `Fri, Apr 23, 6:32 PM`
-- `current_hebrew_date` is formatted like `23 Nissan 5786`
+## Common Configs
 
-These web-editable companion entities change the running device state immediately and now persist across reboot. Once you edit a runtime control from the web UI, the restored runtime value takes precedence over the YAML startup default on future boots.
+Standard Brooklyn-style defaults:
 
-The older split-up number controls for location and early-take-in date/time pieces are still supported, but the text-based controls above are the recommended setup for a smaller web UI.
+```yaml
+start_degree: 0.0
+start_offset_minutes: -18
+end_degree: 8.5
+end_offset_minutes: 0
+```
+
+Israel:
+
+```yaml
+in_israel: true
+```
+
+Summer early Shabbos only:
+
+```yaml
+early_take_in:
+  plag_opinion: baal_hatanya
+  applies_to_yom_tov: false
+  from: "05-01"
+  to: "09-15"
+```
+
+Summer early Shabbos and Erev Yom Tov, with a requested time that will be clamped to plag if too early:
+
+```yaml
+early_take_in:
+  time: "18:30"
+  offset_minutes: 0
+  plag_opinion: baal_hatanya
+  applies_to_yom_tov: true
+  from: "05-01"
+  to: "09-15"
+```
 
 ## Advanced: Set Values From Lambda
 
-You can also change the main component directly from an ESPHome `lambda`, for example in `on_boot`, a button press, or another automation.
+You can change the main component directly from an ESPHome `lambda`, for example in `on_boot`, a button press, or another automation.
 
-After changing values, call `update()` so the binary sensor recalculates immediately instead of waiting for the next poll interval.
-
-If you want lambda-based changes to also persist across reboot, call `save_runtime_settings()` after setting the new values.
+After changing values, call `update()` so the binary sensor recalculates immediately. If lambda-based changes should persist across reboot, call `save_runtime_settings()`.
 
 ```yaml
 esphome:
@@ -277,7 +311,7 @@ esphome:
           id(shabbos_active).set_end_offset_minutes(0);
 
           id(shabbos_active).set_early_take_in_enabled(true);
-          id(shabbos_active).set_early_take_in_plag_opinion("baal_hatanya");
+          id(shabbos_active).set_early_take_in_plag_opinion("Baal HaTanya");
           id(shabbos_active).set_early_take_in_time(18, 30);
           id(shabbos_active).set_early_take_in_offset_minutes(0);
           id(shabbos_active).set_early_take_in_for_yom_tov(false);
@@ -288,29 +322,18 @@ esphome:
           id(shabbos_active).update();
 ```
 
-Available direct setters:
+Direct setters clamp unsafe values to the same ranges used by the web controls.
 
-- `set_latitude(double latitude)`
-- `set_longitude(double longitude)`
-- `set_elevation(double elevation)`
-- `set_in_israel(bool in_israel)`
-- `set_start_degree(double start_degree)`
-- `set_start_offset_minutes(int minutes)`
-- `set_end_degree(double end_degree)`
-- `set_end_offset_minutes(int minutes)`
-- `set_early_take_in_enabled(bool enabled)`
-- `set_early_take_in_plag_opinion(const std::string &opinion)` with `baal_hatanya`, `gra`, `mga`, `Baal HaTanya`, `Gra`, or `MGA`
-- `set_early_take_in_time(int hour, int minute)`
-- `set_early_take_in_offset_minutes(int minutes)`
-- `set_early_take_in_for_yom_tov(bool enabled)`
-- `set_early_take_in_from(int month, int day)`
-- `set_early_take_in_to(int month, int day)`
+## Notes And Assumptions
 
-If you are using the web-server companion entities, lambda-based changes and web edits both operate on the same in-memory runtime state.
+- This component is a scheduling helper, not a halachic ruling. Confirm zmanim, offsets, degree choices, early Shabbos practice, and Yom Tov handling with your rav or local minhag.
+- `start_degree: 0` is geometric sunset. The default end degree of `8.5` uses elevation adjustment.
+- The binary sensor turns on for Shabbos and Yom Tov only. Chanukah candle-lighting dates do not activate it.
+- For second-day Yom Tov transitions, the component uses the end settings at nightfall so the active period stays continuous.
+- Early take-in is plag-based. A requested time or negative offset will never move the start earlier than the selected plag opinion.
+- Calendar and astronomical calculations are vendored from `yparitcher/libzmanim`.
 
-## Repository layout
-
-To use this as a git-based external component, keep the repository layout like this:
+## Repository Layout
 
 ```text
 components/
@@ -332,9 +355,8 @@ components/
     NOAAcalculator.h
 ```
 
-## Notes
+## License
 
-- The binary sensor turns on for Shabbos and Yom Tov only. Chanukah candle-lighting dates do not activate it.
-- For second-day Yom Tov transitions, the component uses the end settings at nightfall so the active period stays continuous.
-- Early take-in is plag-based. A requested time or negative offset will never move the start earlier than the selected plag opinion.
-- The calendar and astronomical calculations are vendored from `yparitcher/libzmanim`.
+This ESPHome component wrapper is licensed under PolyForm Noncommercial 1.0.0. See `LICENSE`.
+
+Vendored `libzmanim` files remain under their original LGPL license. See `LICENSE.libzmanim` and `THIRD_PARTY_NOTICES.md`.
