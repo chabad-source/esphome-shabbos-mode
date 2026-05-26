@@ -8,7 +8,7 @@ Use the binary sensor's `on_press` automation for the start of Shabbos/Yom Tov, 
 
 ```yaml
 external_components:
-  - source: github://chabad-source/esphome-shabbos-mode@main
+  - source: github://chabad-source/esphome-shabbos-mode@stable
     components: [shabbos_mode]
 
 time:
@@ -44,6 +44,8 @@ external_components:
       path: /config/esphome/esphome-shabbos-mode
     components: [shabbos_mode]
 ```
+
+`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.1.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
 
 ## Main Options
 
