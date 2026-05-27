@@ -1,3 +1,7 @@
+[![Shabbos Mode Banner](images/Shabbos%20Mode%20Banner.png)](https://github.com/chabad-source/esphome-shabbos-mode)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate/?hosted_button_id=Q9A7HG8NQEJRU)
+
 # Shabbos Mode ESPHome External Component
 
 An ESPHome external component that exposes a binary sensor which is `ON` during Shabbos or Yom Tov.
@@ -362,3 +366,7 @@ components/
 This ESPHome component wrapper is licensed under PolyForm Noncommercial 1.0.0. See `LICENSE`.
 
 Vendored `libzmanim` files remain under their original LGPL license. See `LICENSE.libzmanim` and `THIRD_PARTY_NOTICES.md`.
+
+## Contribute
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=Q9A7HG8NQEJRU) - or - [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/rebbepod)
