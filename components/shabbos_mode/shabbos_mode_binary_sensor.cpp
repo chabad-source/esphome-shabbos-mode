@@ -399,7 +399,7 @@ void ShabbosModeBinarySensor::set_start_degree(double start_degree) {
 }
 
 void ShabbosModeBinarySensor::set_start_offset_minutes(int start_offset_minutes) {
-  this->start_offset_minutes_ = this->clamp_int_(start_offset_minutes, -300, 300);
+  this->start_offset_minutes_ = this->clamp_int_(start_offset_minutes, -999, 999);
 }
 
 void ShabbosModeBinarySensor::set_end_degree(double end_degree) {
@@ -407,7 +407,7 @@ void ShabbosModeBinarySensor::set_end_degree(double end_degree) {
 }
 
 void ShabbosModeBinarySensor::set_end_offset_minutes(int end_offset_minutes) {
-  this->end_offset_minutes_ = this->clamp_int_(end_offset_minutes, -300, 300);
+  this->end_offset_minutes_ = this->clamp_int_(end_offset_minutes, -999, 999);
 }
 
 void ShabbosModeBinarySensor::set_early_take_in_time(int hour, int minute) {
@@ -421,7 +421,7 @@ void ShabbosModeBinarySensor::set_early_take_in_time(int hour, int minute) {
 void ShabbosModeBinarySensor::set_early_take_in_offset_minutes(int early_take_in_offset_minutes) {
   this->has_early_take_in_ = true;
   this->early_take_in_enabled_ = true;
-  this->early_take_in_offset_minutes_ = this->clamp_int_(early_take_in_offset_minutes, -300, 300);
+  this->early_take_in_offset_minutes_ = this->clamp_int_(early_take_in_offset_minutes, -999, 999);
 }
 
 void ShabbosModeBinarySensor::set_early_take_in_from(int month, int day) {
@@ -1008,7 +1008,7 @@ void ShabbosModeBinarySensor::sanitize_runtime_settings_() {
   this->early_take_in_hour_ = this->clamp_int_(this->early_take_in_hour_, 0, 23);
   this->early_take_in_minute_ = this->clamp_int_(this->early_take_in_minute_, 0, 59);
   this->early_take_in_enabled_ = this->has_early_take_in_ && this->early_take_in_enabled_;
-  this->early_take_in_offset_minutes_ = this->clamp_int_(this->early_take_in_offset_minutes_, -300, 300);
+  this->early_take_in_offset_minutes_ = this->clamp_int_(this->early_take_in_offset_minutes_, -999, 999);
   this->early_take_in_plag_opinion_ =
       this->early_take_in_plag_opinion_ == PLAG_OPINION_GRA || this->early_take_in_plag_opinion_ == PLAG_OPINION_MGA
           ? this->early_take_in_plag_opinion_

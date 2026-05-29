@@ -83,13 +83,13 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_ELEVATION, default=0.0): cv.float_,
             cv.Optional(CONF_IN_ISRAEL, default=False): cv.boolean,
             cv.Optional(CONF_START_DEGREE, default=0.0): cv.float_range(min=0.0, max=30.0),
-            cv.Optional(CONF_START_OFFSET_MINUTES, default=-18): cv.int_range(min=-300, max=300),
+            cv.Optional(CONF_START_OFFSET_MINUTES, default=-18): cv.int_range(min=-999, max=999),
             cv.Optional(CONF_END_DEGREE, default=8.5): cv.float_range(min=0.0, max=30.0),
-            cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
+            cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-999, max=999),
             cv.Optional(CONF_EARLY_TAKE_IN): cv.Schema(
                 {
                     cv.Optional(CONF_TIME): validate_time_of_day,
-                    cv.Optional(CONF_OFFSET_MINUTES, default=0): cv.int_range(min=-300, max=300),
+                    cv.Optional(CONF_OFFSET_MINUTES, default=0): cv.int_range(min=-999, max=999),
                     cv.Optional(CONF_FROM): validate_month_day,
                     cv.Optional(CONF_TO): validate_month_day,
                     cv.Optional(CONF_PLAG_OPINION, default="baal_hatanya"): cv.enum(PLAG_OPINIONS, lower=True),
