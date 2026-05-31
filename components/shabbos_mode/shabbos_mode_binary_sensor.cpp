@@ -335,6 +335,7 @@ hdate ShabbosModeBinarySensor::calculate_next_transition_(const ESPTime &now, bo
   hdate current = convertDate(base_tm);
   current.offset = ESPTime::timezone_offset();
   setEY(&current, this->in_israel_);
+  bool tracked_active = this->compute_active_(current);
 
   for (int offset_days = 0; offset_days < 370; offset_days++) {
     struct tm search_tm = base_tm;
@@ -362,24 +363,25 @@ hdate ShabbosModeBinarySensor::calculate_next_transition_(const ESPTime &now, bo
 
     for (int i = 0; i < candidate_count; i++) {
       hdate event = candidates[i];
-      if (this->is_valid_event_(event) && hdatecompare(current, event) == 1 &&
-          this->is_actual_transition_(event, want_turn_on)) {
+      if (!this->is_valid_event_(event) || hdatecompare(current, event) != 1) {
+        continue;
+      }
+
+      hdate after = event;
+      hdateaddsecond(&after, 1);
+      bool active_after = this->compute_active_(after);
+      if (active_after == tracked_active) {
+        continue;
+      }
+
+      tracked_active = active_after;
+      if (tracked_active == want_turn_on) {
         return event;
       }
     }
   }
 
   return (hdate) {0};
-}
-
-bool ShabbosModeBinarySensor::is_actual_transition_(hdate event, bool want_turn_on) const {
-  hdate before = event;
-  hdate after = event;
-  hdateaddminute(&before, -1);
-  hdateaddminute(&after, 1);
-  bool active_before = this->compute_active_(before);
-  bool active_after = this->compute_active_(after);
-  return want_turn_on ? (!active_before && active_after) : (active_before && !active_after);
 }
 
 void ShabbosModeBinarySensor::set_latitude(double latitude) {

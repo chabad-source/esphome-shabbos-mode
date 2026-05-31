@@ -128,7 +128,6 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   long get_local_mean_time_offset_(hdate current) const;
   bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;
   bool is_in_early_take_in_range_(int current_month, int current_day) const;
-  bool is_actual_transition_(hdate event, bool want_turn_on) const;
   bool is_month_day_before_or_equal_(int left_month, int left_day, int right_month, int right_day) const;
   bool is_valid_month_day_(int month, int day) const;
   int max_day_for_month_(int month) const;
