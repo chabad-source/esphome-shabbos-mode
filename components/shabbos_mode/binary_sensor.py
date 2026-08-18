@@ -22,6 +22,8 @@ CONF_FROM = "from"
 CONF_TO = "to"
 CONF_PLAG_OPINION = "plag_opinion"
 CONF_APPLIES_TO_YOM_TOV = "applies_to_yom_tov"
+CONF_SHABBOS = "shabbos"
+CONF_YOM_TOV = "yom_tov"
 
 PLAG_OPINIONS = {
     "baal_hatanya": "baal_hatanya",
@@ -87,6 +89,8 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_START_OFFSET_MINUTES, default=-18): cv.int_range(min=-999, max=999),
             cv.Optional(CONF_END_DEGREE, default=8.5): cv.float_range(min=0.0, max=30.0),
             cv.Optional(CONF_END_OFFSET_MINUTES, default=0): cv.int_range(min=-999, max=999),
+            cv.Optional(CONF_SHABBOS): binary_sensor.binary_sensor_schema(),
+            cv.Optional(CONF_YOM_TOV): binary_sensor.binary_sensor_schema(),
             cv.Optional(CONF_EARLY_TAKE_IN): cv.Schema(
                 {
                     cv.Optional(CONF_TIME): validate_time_of_day,
@@ -118,6 +122,12 @@ async def to_code(config):
     cg.add(var.set_start_offset_minutes(config[CONF_START_OFFSET_MINUTES]))
     cg.add(var.set_end_degree(config[CONF_END_DEGREE]))
     cg.add(var.set_end_offset_minutes(config[CONF_END_OFFSET_MINUTES]))
+    if CONF_SHABBOS in config:
+        shabbos_sensor = await binary_sensor.new_binary_sensor(config[CONF_SHABBOS])
+        cg.add(var.set_shabbos_sensor(shabbos_sensor))
+    if CONF_YOM_TOV in config:
+        yom_tov_sensor = await binary_sensor.new_binary_sensor(config[CONF_YOM_TOV])
+        cg.add(var.set_yom_tov_sensor(yom_tov_sensor))
     if CONF_EARLY_TAKE_IN in config:
         early_take_in = config[CONF_EARLY_TAKE_IN]
         if CONF_TIME in early_take_in:

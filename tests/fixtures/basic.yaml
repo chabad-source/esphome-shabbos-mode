@@ -25,6 +25,10 @@ binary_sensor:
     latitude: 40.66896
     longitude: -73.94284
     elevation: 34
+    shabbos:
+      name: Shabbos Only Active
+    yom_tov:
+      name: Yom Tov Only Active
     early_take_in:
       time: "18:30"
       from: "05-01"

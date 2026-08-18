@@ -33,6 +33,12 @@ binary_sensor:
     start_offset_minutes: -18
     end_degree: 8.5
     end_offset_minutes: 0
+    shabbos:
+      name: "Shabbos Only Active"
+      icon: mdi:candles
+    yom_tov:
+      name: "Yom Tov Only Active"
+      icon: mdi:calendar-star
     on_press:
       - logger.log: "Shabbos or Yom Tov started"
     on_release:
@@ -49,7 +55,7 @@ external_components:
     components: [shabbos_mode]
 ```
 
-`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.2.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
+`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.3.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
 
 ## Main Options
 
@@ -60,8 +66,12 @@ external_components:
 - `start_offset_minutes`: minutes added to the start time, default `-18`.
 - `end_degree`: degrees below the geometric horizon for the end boundary, default `8.5`.
 - `end_offset_minutes`: minutes added to the end time, default `0`.
+- `shabbos`: optional child binary sensor that is `ON` only for Shabbos.
+- `yom_tov`: optional child binary sensor that is `ON` only for melacha-prohibited Yom Tov days.
 
 `start_degree: 0` means sunset. A common setup is candle lighting at 18 minutes before sunset, with Shabbos/Yom Tov ending at 8.5 degrees.
+
+The original platform sensor remains the combined Shabbos-or-Yom-Tov state. When Shabbos and Yom Tov overlap, both optional child sensors are `ON`. When one flows directly into the other, each child changes at the configured boundary while the combined sensor remains continuously `ON`.
 
 ## Early Take-In
 

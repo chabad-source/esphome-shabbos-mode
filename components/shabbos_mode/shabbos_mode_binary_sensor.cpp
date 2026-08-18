@@ -35,7 +35,7 @@ void ShabbosModeBinarySensor::setup() {
     return;
   }
 
-  this->publish_state(this->compute_active_(now));
+  this->publish_states_(now);
 }
 
 void ShabbosModeBinarySensor::loop() {
@@ -59,11 +59,17 @@ void ShabbosModeBinarySensor::update() {
     return;
   }
 
-  this->publish_state(this->compute_active_(now));
+  this->publish_states_(now);
 }
 
 void ShabbosModeBinarySensor::dump_config() {
   LOG_BINARY_SENSOR("", "Shabbos Mode Binary Sensor", this);
+  if (this->shabbos_sensor_ != nullptr) {
+    LOG_BINARY_SENSOR("  ", "Shabbos-Only Binary Sensor", this->shabbos_sensor_);
+  }
+  if (this->yom_tov_sensor_ != nullptr) {
+    LOG_BINARY_SENSOR("  ", "Yom Tov-Only Binary Sensor", this->yom_tov_sensor_);
+  }
   ESP_LOGCONFIG(TAG, "  Latitude: %.6f", this->latitude_);
   ESP_LOGCONFIG(TAG, "  Longitude: %.6f", this->longitude_);
   ESP_LOGCONFIG(TAG, "  Elevation: %.2f m", this->elevation_);
@@ -103,15 +109,6 @@ void ShabbosModeBinarySensor::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 
-bool ShabbosModeBinarySensor::compute_active_(const ESPTime &now) const {
-  auto now_copy = now;
-  struct tm current_tm = now_copy.to_c_tm();
-  hdate current = convertDate(current_tm);
-  current.offset = ESPTime::timezone_offset();
-  setEY(&current, this->in_israel_);
-  return this->compute_active_(current);
-}
-
 bool ShabbosModeBinarySensor::compute_active_(hdate current) const {
   struct tm current_tm = hdategregorian(current);
   int current_month = current_tm.tm_mon + 1;
@@ -136,13 +133,79 @@ bool ShabbosModeBinarySensor::compute_active_(hdate current) const {
   return active;
 }
 
+bool ShabbosModeBinarySensor::compute_shabbos_active_(hdate current) const {
+  if (current.wday == 0) {
+    hdate end = this->calculate_end_event_(current);
+    return this->is_valid_event_(end) && hdatecompare(current, end) == 1;
+  }
+
+  if (current.wday != 6) {
+    return false;
+  }
+
+  struct tm current_tm = hdategregorian(current);
+  hdate start =
+      this->calculate_first_night_start_event_(current, current_tm.tm_mon + 1, current_tm.tm_mday, false);
+  return this->is_valid_event_(start) && hdatecompare(current, start) != 1;
+}
+
+bool ShabbosModeBinarySensor::compute_yom_tov_active_(hdate current) const {
+  if (this->is_yom_tov_(current)) {
+    hdate end = this->calculate_end_event_(current);
+    if (this->is_valid_event_(end) && hdatecompare(current, end) == 1) {
+      return true;
+    }
+  }
+
+  hdate tomorrow = current;
+  hdateaddday(&tomorrow, 1);
+  if (!this->is_yom_tov_(tomorrow)) {
+    return false;
+  }
+
+  hdate start = {0};
+  if (isassurbemelachah(current)) {
+    start = this->calculate_end_event_(current);
+  } else {
+    struct tm current_tm = hdategregorian(current);
+    start = this->calculate_first_night_start_event_(current, current_tm.tm_mon + 1, current_tm.tm_mday, true);
+  }
+  return this->is_valid_event_(start) && hdatecompare(current, start) != 1;
+}
+
+bool ShabbosModeBinarySensor::is_yom_tov_(hdate date) const {
+  yomtov holiday = getyomtov(date);
+  return holiday >= PESACH_DAY1 && holiday <= SIMCHAS_TORAH;
+}
+
+void ShabbosModeBinarySensor::publish_states_(const ESPTime &now) {
+  auto now_copy = now;
+  struct tm current_tm = now_copy.to_c_tm();
+  hdate current = convertDate(current_tm);
+  current.offset = ESPTime::timezone_offset();
+  setEY(&current, this->in_israel_);
+
+  this->publish_state(this->compute_active_(current));
+  if (this->shabbos_sensor_ != nullptr) {
+    this->shabbos_sensor_->publish_state(this->compute_shabbos_active_(current));
+  }
+  if (this->yom_tov_sensor_ != nullptr) {
+    this->yom_tov_sensor_->publish_state(this->compute_yom_tov_active_(current));
+  }
+}
+
 hdate ShabbosModeBinarySensor::calculate_start_event_(hdate date, int current_month, int current_day) const {
   if (iscandlelighting(date) == 2) {
     return this->calculate_date_event_(date, this->end_degree_, this->end_offset_minutes_);
   }
 
+  return this->calculate_first_night_start_event_(date, current_month, current_day, date.wday != 6);
+}
+
+hdate ShabbosModeBinarySensor::calculate_first_night_start_event_(hdate date, int current_month,
+                                                                  int current_day, bool is_yom_tov_start) const {
   hdate start = this->calculate_date_event_(date, this->start_degree_, this->start_offset_minutes_);
-  if (!this->should_apply_early_take_in_(date, current_month, current_day)) {
+  if (!this->should_apply_early_take_in_(date, current_month, current_day, is_yom_tov_start)) {
     return start;
   }
 
@@ -303,17 +366,15 @@ long ShabbosModeBinarySensor::get_timezone_offset_for_date_(const struct tm &loc
   return static_cast<long>(local.timestamp - local_timestamp);
 }
 
-bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date, int current_month, int current_day) const {
-  if (!this->has_early_take_in_ || !this->early_take_in_enabled_ || iscandlelighting(date) != 1) {
+bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date, int current_month, int current_day,
+                                                          bool is_yom_tov_start) const {
+  if (!this->has_early_take_in_ || !this->early_take_in_enabled_) {
     return false;
   }
   if (!this->is_in_early_take_in_range_(current_month, current_day)) {
     return false;
   }
-  if (date.wday == 6) {
-    return true;
-  }
-  return this->early_take_in_for_yom_tov_;
+  return is_yom_tov_start ? this->early_take_in_for_yom_tov_ : date.wday == 6;
 }
 
 bool ShabbosModeBinarySensor::is_in_early_take_in_range_(int current_month, int current_day) const {
@@ -996,7 +1057,7 @@ void ShabbosModeBinarySensor::notify_runtime_settings_changed_() {
   if (this->time_ != nullptr) {
     auto now = this->time_->now();
     if (now.is_valid()) {
-      this->publish_state(this->compute_active_(now));
+      this->publish_states_(now);
     }
   }
 

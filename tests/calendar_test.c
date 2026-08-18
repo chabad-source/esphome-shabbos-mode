@@ -40,6 +40,18 @@ int main(void) {
   assert(saturday.wday == 0);
   assert(isassurbemelachah(saturday));
 
+  /* In the diaspora, Pesach 2026 flows from Yom Tov on Friday into Shabbos. */
+  hdate pesach_friday = from_gregorian(2026, 4, 3, 12);
+  setEY(&pesach_friday, 0);
+  assert(pesach_friday.wday == 6);
+  assert(getyomtov(pesach_friday) == PESACH_DAY2);
+  assert(iscandlelighting(pesach_friday) == 1);
+  hdate pesach_shabbos = from_gregorian(2026, 4, 4, 12);
+  setEY(&pesach_shabbos, 0);
+  assert(pesach_shabbos.wday == 0);
+  assert(getyomtov(pesach_shabbos) == CHOL_HAMOED_PESACH_DAY1);
+  assert(isassurbemelachah(pesach_shabbos));
+
   hdate leap_adar = from_gregorian(2024, 3, 24, 12);
   assert(leap_adar.year == 5784);
   assert(leap_adar.leap);

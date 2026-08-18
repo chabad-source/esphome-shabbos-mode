@@ -71,6 +71,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void set_start_offset_minutes(int start_offset_minutes);
   void set_end_degree(double end_degree);
   void set_end_offset_minutes(int end_offset_minutes);
+  void set_shabbos_sensor(binary_sensor::BinarySensor *sensor) { this->shabbos_sensor_ = sensor; }
+  void set_yom_tov_sensor(binary_sensor::BinarySensor *sensor) { this->yom_tov_sensor_ = sensor; }
   void set_early_take_in_time(int hour, int minute);
   void set_early_take_in_offset_minutes(int early_take_in_offset_minutes);
   void set_early_take_in_for_yom_tov(bool early_take_in_for_yom_tov) {
@@ -104,10 +106,15 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   void dump_config() override;
 
  protected:
-  bool compute_active_(const ESPTime &now) const;
   bool compute_active_(hdate current) const;
+  bool compute_shabbos_active_(hdate current) const;
+  bool compute_yom_tov_active_(hdate current) const;
+  bool is_yom_tov_(hdate date) const;
+  void publish_states_(const ESPTime &now);
   hdate calculate_date_event_(hdate date, double degree, int offset_minutes) const;
   hdate calculate_start_event_(hdate date, int current_month, int current_day) const;
+  hdate calculate_first_night_start_event_(hdate date, int current_month, int current_day,
+                                           bool is_yom_tov_start) const;
   hdate calculate_end_event_(hdate date) const;
   hdate calculate_early_take_in_event_(hdate date) const;
   hdate calculate_plag_event_(hdate date) const;
@@ -128,7 +135,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
   long get_timezone_offset_for_date_(const struct tm &local_date) const;
-  bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;
+  bool should_apply_early_take_in_(hdate date, int current_month, int current_day, bool is_yom_tov_start) const;
   bool is_in_early_take_in_range_(int current_month, int current_day) const;
   bool is_month_day_before_or_equal_(int left_month, int left_day, int right_month, int right_day) const;
   bool is_valid_month_day_(int month, int day) const;
@@ -140,6 +147,8 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   bool is_valid_event_(const hdate &date) const;
 
   time::RealTimeClock *time_{nullptr};
+  binary_sensor::BinarySensor *shabbos_sensor_{nullptr};
+  binary_sensor::BinarySensor *yom_tov_sensor_{nullptr};
   double latitude_{0.0};
   double longitude_{0.0};
   double elevation_{0.0};
