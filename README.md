@@ -68,7 +68,7 @@ external_components:
     components: [shabbos_mode]
 ```
 
-`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.3.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
+`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.3.1`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
 
 ## Main Options
 
