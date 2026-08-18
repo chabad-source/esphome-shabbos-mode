@@ -33,16 +33,29 @@ binary_sensor:
     start_offset_minutes: -18
     end_degree: 8.5
     end_offset_minutes: 0
+
     shabbos:
+      id: shabbos_only_active
       name: "Shabbos Only Active"
       icon: mdi:candles
+      on_press:
+        - logger.log: "Shabbos started"
+      on_release:
+        - logger.log: "Shabbos ended"
+
     yom_tov:
+      id: yom_tov_only_active
       name: "Yom Tov Only Active"
       icon: mdi:calendar-star
+      on_press:
+        - logger.log: "Yom Tov started"
+      on_release:
+        - logger.log: "Yom Tov ended"
+
     on_press:
       - logger.log: "Shabbos or Yom Tov started"
     on_release:
-      - logger.log: "Shabbos or Yom Tov ended"
+      - logger.log: "Shabbos and Yom Tov are both over"
 ```
 
 For local development, replace the GitHub source with:
@@ -71,7 +84,9 @@ external_components:
 
 `start_degree: 0` means sunset. A common setup is candle lighting at 18 minutes before sunset, with Shabbos/Yom Tov ending at 8.5 degrees.
 
-The original platform sensor remains the combined Shabbos-or-Yom-Tov state. When Shabbos and Yom Tov overlap, both optional child sensors are `ON`. When one flows directly into the other, each child changes at the configured boundary while the combined sensor remains continuously `ON`.
+The original platform sensor remains the combined Shabbos-or-Yom-Tov state. Although `shabbos` and `yom_tov` are nested in its YAML configuration, ESPHome registers them as separate binary-sensor entities. Each supports its own ID, filters, `on_press`, `on_release`, and other standard binary-sensor options.
+
+When Shabbos and Yom Tov overlap, both optional child sensors are `ON`. When one flows directly into the other, each child changes at the configured boundary while the combined sensor remains continuously `ON`.
 
 ## Early Take-In
 
