@@ -24,7 +24,9 @@ void ShabbosModeBinarySensor::setup() {
     return;
   }
 
-  this->settings_pref_ = this->make_entity_preference<RuntimeSettings>(0x534d0101);
+  this->yaml_defaults_ = this->get_runtime_settings_();
+  this->settings_pref_ =
+      global_preferences->make_preference<RuntimeSettings>(this->get_object_id_hash() ^ 0x534d0101);
   this->load_runtime_settings_();
 
   auto now = this->time_->now();
@@ -283,6 +285,24 @@ long ShabbosModeBinarySensor::get_local_mean_time_offset_(hdate current) const {
   return static_cast<long>(this->longitude_ * 4 * 60 - current.offset);
 }
 
+long ShabbosModeBinarySensor::get_timezone_offset_for_date_(const struct tm &local_date) const {
+  ESPTime local{};
+  local.year = local_date.tm_year + 1900;
+  local.month = local_date.tm_mon + 1;
+  local.day_of_month = local_date.tm_mday;
+  local.hour = 12;
+  local.minute = 0;
+  local.second = 0;
+  local.recalc_timestamp_local();
+  if (local.timestamp == -1) {
+    return ESPTime::timezone_offset();
+  }
+
+  time_t local_timestamp = local.timestamp;
+  local.recalc_timestamp_utc(false);
+  return static_cast<long>(local.timestamp - local_timestamp);
+}
+
 bool ShabbosModeBinarySensor::should_apply_early_take_in_(hdate date, int current_month, int current_day) const {
   if (!this->has_early_take_in_ || !this->early_take_in_enabled_ || iscandlelighting(date) != 1) {
     return false;
@@ -340,12 +360,13 @@ hdate ShabbosModeBinarySensor::calculate_next_transition_(const ESPTime &now, bo
   for (int offset_days = 0; offset_days < 370; offset_days++) {
     struct tm search_tm = base_tm;
     search_tm.tm_mday += offset_days;
+    search_tm.tm_isdst = -1;
     if (mktime(&search_tm) == -1) {
       continue;
     }
 
     hdate search_date = convertDate(search_tm);
-    search_date.offset = current.offset;
+    search_date.offset = this->get_timezone_offset_for_date_(search_tm);
     setEY(&search_date, this->in_israel_);
 
     hdate candidates[2] = {{0}, {0}};
@@ -720,6 +741,10 @@ std::string ShabbosModeBinarySensor::get_current_hebrew_date_text() const {
   hdate current = convertDate(current_tm);
   current.offset = ESPTime::timezone_offset();
   setEY(&current, this->in_israel_);
+  hdate sunset = this->calculate_date_event_(current, 0.0, 0);
+  if (this->is_valid_event_(sunset) && hdatecompare(current, sunset) != 1) {
+    hdateaddday(&current, 1);
+  }
   return this->format_hebrew_date_(current);
 }
 
@@ -727,23 +752,23 @@ std::string ShabbosModeBinarySensor::format_hdate_(const hdate &date) const {
   if (!this->is_valid_event_(date)) {
     return "";
   }
-  time_t time = hdatetime_t(date);
-  struct tm *local = localtime(&time);
-  if (local == nullptr) {
+  time_t timestamp = hdatetime_t(date);
+  ESPTime local = ESPTime::from_epoch_local(timestamp);
+  if (!local.is_valid()) {
     return "";
   }
   static const char *const weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   static const char *const months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-  int hour_24 = local->tm_hour;
+  int hour_24 = local.hour;
   int hour_12 = hour_24 % 12;
   if (hour_12 == 0) {
     hour_12 = 12;
   }
   char buffer[48];
-  snprintf(buffer, sizeof(buffer), "%s, %s %d, %d:%02d %s", weekdays[local->tm_wday], months[local->tm_mon],
-           local->tm_mday, hour_12, local->tm_min, hour_24 >= 12 ? "PM" : "AM");
+  snprintf(buffer, sizeof(buffer), "%s, %s %d, %d:%02d %s", weekdays[local.day_of_week - 1],
+           months[local.month - 1], local.day_of_month, hour_12, local.minute, hour_24 >= 12 ? "PM" : "AM");
   return std::string(buffer);
 }
 
@@ -864,28 +889,7 @@ void ShabbosModeBinarySensor::load_runtime_settings_() {
     return;
   }
 
-  this->latitude_ = settings.latitude;
-  this->longitude_ = settings.longitude;
-  this->elevation_ = settings.elevation;
-  this->in_israel_ = settings.in_israel;
-  this->start_degree_ = settings.start_degree;
-  this->start_offset_minutes_ = settings.start_offset_minutes;
-  this->end_degree_ = settings.end_degree;
-  this->end_offset_minutes_ = settings.end_offset_minutes;
-  this->has_early_take_in_ = settings.has_early_take_in;
-  this->has_early_take_in_time_ = settings.has_early_take_in_time;
-  this->early_take_in_hour_ = settings.early_take_in_hour;
-  this->early_take_in_minute_ = settings.early_take_in_minute;
-  this->early_take_in_offset_minutes_ = settings.early_take_in_offset_minutes;
-  this->early_take_in_enabled_ = settings.early_take_in_enabled;
-  this->early_take_in_for_yom_tov_ = settings.early_take_in_for_yom_tov;
-  this->early_take_in_plag_opinion_ = static_cast<PlagOpinion>(settings.early_take_in_plag_opinion);
-  this->has_early_take_in_from_ = settings.has_early_take_in_from;
-  this->early_take_in_from_month_ = settings.early_take_in_from_month;
-  this->early_take_in_from_day_ = settings.early_take_in_from_day;
-  this->has_early_take_in_to_ = settings.has_early_take_in_to;
-  this->early_take_in_to_month_ = settings.early_take_in_to_month;
-  this->early_take_in_to_day_ = settings.early_take_in_to_day;
+  this->apply_runtime_settings_(settings);
   this->sanitize_runtime_settings_();
   this->settings_loaded_ = true;
 }
@@ -896,6 +900,30 @@ void ShabbosModeBinarySensor::save_runtime_settings_() {
   }
   this->sanitize_runtime_settings_();
 
+  RuntimeSettings settings = this->get_runtime_settings_();
+  this->settings_pref_.save(&settings);
+  this->settings_dirty_ = false;
+}
+
+void ShabbosModeBinarySensor::request_runtime_settings_save_() {
+  if (!this->settings_loaded_) {
+    return;
+  }
+  this->settings_dirty_ = true;
+  this->settings_dirty_at_ = millis();
+}
+
+void ShabbosModeBinarySensor::save_runtime_settings() { this->save_runtime_settings_(); }
+
+void ShabbosModeBinarySensor::reset_runtime_settings() {
+  this->apply_runtime_settings_(this->yaml_defaults_);
+  this->sanitize_runtime_settings_();
+  this->settings_loaded_ = true;
+  this->save_runtime_settings_();
+  this->notify_runtime_settings_changed_();
+}
+
+ShabbosModeBinarySensor::RuntimeSettings ShabbosModeBinarySensor::get_runtime_settings_() const {
   RuntimeSettings settings{};
   settings.latitude = this->latitude_;
   settings.longitude = this->longitude_;
@@ -919,19 +947,33 @@ void ShabbosModeBinarySensor::save_runtime_settings_() {
   settings.has_early_take_in_to = this->has_early_take_in_to_;
   settings.early_take_in_to_month = this->early_take_in_to_month_;
   settings.early_take_in_to_day = this->early_take_in_to_day_;
-  this->settings_pref_.save(&settings);
-  this->settings_dirty_ = false;
+  return settings;
 }
 
-void ShabbosModeBinarySensor::request_runtime_settings_save_() {
-  if (!this->settings_loaded_) {
-    return;
-  }
-  this->settings_dirty_ = true;
-  this->settings_dirty_at_ = millis();
+void ShabbosModeBinarySensor::apply_runtime_settings_(const RuntimeSettings &settings) {
+  this->latitude_ = settings.latitude;
+  this->longitude_ = settings.longitude;
+  this->elevation_ = settings.elevation;
+  this->in_israel_ = settings.in_israel;
+  this->start_degree_ = settings.start_degree;
+  this->start_offset_minutes_ = settings.start_offset_minutes;
+  this->end_degree_ = settings.end_degree;
+  this->end_offset_minutes_ = settings.end_offset_minutes;
+  this->has_early_take_in_ = settings.has_early_take_in;
+  this->has_early_take_in_time_ = settings.has_early_take_in_time;
+  this->early_take_in_hour_ = settings.early_take_in_hour;
+  this->early_take_in_minute_ = settings.early_take_in_minute;
+  this->early_take_in_offset_minutes_ = settings.early_take_in_offset_minutes;
+  this->early_take_in_enabled_ = settings.early_take_in_enabled;
+  this->early_take_in_for_yom_tov_ = settings.early_take_in_for_yom_tov;
+  this->early_take_in_plag_opinion_ = static_cast<PlagOpinion>(settings.early_take_in_plag_opinion);
+  this->has_early_take_in_from_ = settings.has_early_take_in_from;
+  this->early_take_in_from_month_ = settings.early_take_in_from_month;
+  this->early_take_in_from_day_ = settings.early_take_in_from_day;
+  this->has_early_take_in_to_ = settings.has_early_take_in_to;
+  this->early_take_in_to_month_ = settings.early_take_in_to_month;
+  this->early_take_in_to_day_ = settings.early_take_in_to_day;
 }
-
-void ShabbosModeBinarySensor::save_runtime_settings() { this->save_runtime_settings_(); }
 
 void ShabbosModeBinarySensor::register_event_text_sensor(ShabbosModeEventTextSensor *sensor) {
   this->event_text_sensors_.push_back(sensor);

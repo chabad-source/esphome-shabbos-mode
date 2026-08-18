@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "esphome/components/button/button.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/select/select.h"
 #include "esphome/components/switch/switch.h"
@@ -77,6 +78,14 @@ class ShabbosModeEventTextSensor
 
  protected:
   SettingTextSensorType setting_type_{SETTING_TEXT_SENSOR_NEXT_TURN_ON};
+};
+
+class ShabbosModeResetButton : public button::Button, public Component, public Parented<ShabbosModeBinarySensor> {
+ public:
+  void dump_config() override;
+
+ protected:
+  void press_action() override;
 };
 
 }  // namespace shabbos_mode

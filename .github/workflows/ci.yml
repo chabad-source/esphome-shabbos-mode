@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build calendar regression tests
+        run: >-
+          cc -std=c11 -Wall -Wextra -Werror
+          tests/calendar_test.c
+          components/shabbos_mode/hebrewcalendar.c
+          -lm -o /tmp/calendar_test
+      - name: Run calendar regression tests
+        run: /tmp/calendar_test
+
+  esphome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install ESPHome
+        run: pip install "esphome>=2025.5,<2026"
+      - name: Validate example configuration
+        run: esphome config tests/fixtures/basic.yaml
+      - name: Compile host firmware
+        run: esphome compile tests/fixtures/basic.yaml

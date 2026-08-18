@@ -49,7 +49,7 @@ external_components:
     components: [shabbos_mode]
 ```
 
-`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.1.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
+`stable` is a moving tag that points at the latest recommended release. For exact reproducibility, pin an immutable version tag such as `v0.2.0`. For development builds, use `github://chabad-source/esphome-shabbos-mode@main`.
 
 ## Main Options
 
@@ -99,6 +99,8 @@ The component then compares that early start against the normal start and uses w
 ## Web Server Runtime Controls
 
 ESPHome YAML is the startup default, but this component also supports runtime-editable companion entities for the ESPHome `web_server`. Runtime edits apply immediately and are persisted across reboot. Writes are debounced before saving to flash.
+
+Persisted runtime values take precedence over YAML after reboot. Add the reset button below to restore every runtime value to the defaults compiled from the current YAML configuration.
 
 The compact setup below keeps the web UI smaller by combining related fields into text entries:
 
@@ -193,6 +195,12 @@ select:
     icon: mdi:book-open-variant
     shabbos_mode_id: shabbos_active
 
+button:
+  - platform: shabbos_mode
+    name: "Restore Shabbos YAML Defaults"
+    icon: mdi:restore
+    shabbos_mode_id: shabbos_active
+
 text_sensor:
   - platform: shabbos_mode
     name: "Next Shabbos Mode Turn On"
@@ -254,7 +262,9 @@ Available `text_sensor` types:
 - `next_turn_off`: next actual state transition to `OFF`
 - `current_hebrew_date`
 
-The transition text sensors use a friendly local format like `Fri, Apr 23, 6:32 PM`. The Hebrew date sensor is formatted like `23 Nissan 5786`.
+The transition text sensors use a friendly local format like `Fri, Apr 23, 6:32 PM`. Future events use the timezone offset that applies on the event date, including daylight-saving changes. The Hebrew date sensor is formatted like `23 Nissan 5786` and advances at local geometric sunset.
+
+The optional `button` companion restores all persisted runtime settings to the values compiled from YAML and immediately refreshes the binary and text sensors.
 
 ## Common Configs
 
@@ -328,6 +338,12 @@ esphome:
           id(shabbos_active).update();
 ```
 
+To discard persisted runtime changes and restore the current YAML defaults from a lambda, call:
+
+```cpp
+id(shabbos_active).reset_runtime_settings();
+```
+
 Direct setters clamp unsafe values to the same ranges used by the web controls.
 
 ## Notes And Assumptions
@@ -338,6 +354,21 @@ Direct setters clamp unsafe values to the same ranges used by the web controls.
 - For second-day Yom Tov transitions, the component uses the end settings at nightfall so the active period stays continuous.
 - Early take-in is plag-based. A requested time or negative offset will never move the start earlier than the selected plag opinion.
 - Calendar and astronomical calculations are vendored from `yparitcher/libzmanim`.
+- The default `update_interval` is `30s`, so binary-sensor automations can run up to approximately 30 seconds after a calculated boundary. Set a shorter `update_interval` on the binary sensor if needed.
+
+## Development And Testing
+
+The repository includes calendar regression tests and an ESPHome host-build fixture. CI runs both for pushes and pull requests.
+
+```bash
+cc -std=c11 -Wall -Wextra -Werror \
+  tests/calendar_test.c components/shabbos_mode/hebrewcalendar.c \
+  -lm -o /tmp/calendar_test
+/tmp/calendar_test
+
+esphome config tests/fixtures/basic.yaml
+esphome compile tests/fixtures/basic.yaml
+```
 
 ## Repository Layout
 
@@ -346,6 +377,7 @@ components/
   shabbos_mode/
     __init__.py
     binary_sensor.py
+    button.py
     number.py
     select.py
     shabbos_mode_binary_sensor.cpp

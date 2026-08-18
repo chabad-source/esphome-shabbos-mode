@@ -71,5 +71,12 @@ void ShabbosModeEventTextSensor::update() {
 
 void ShabbosModeEventTextSensor::dump_config() { LOG_TEXT_SENSOR("", "Shabbos Mode Event Text Sensor", this); }
 
+void ShabbosModeResetButton::dump_config() { LOG_BUTTON("", "Shabbos Mode Reset Button", this); }
+
+void ShabbosModeResetButton::press_action() {
+  ESP_LOGI(TAG, "Restoring Shabbos Mode settings from YAML defaults");
+  this->parent_->reset_runtime_settings();
+}
+
 }  // namespace shabbos_mode
 }  // namespace esphome

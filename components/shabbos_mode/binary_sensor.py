@@ -4,6 +4,7 @@ from esphome.components import binary_sensor, time
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ["time"]
+AUTO_LOAD = ["button", "number", "select", "switch", "text", "text_sensor"]
 
 CONF_TIME_ID = "time_id"
 CONF_LATITUDE = "latitude"

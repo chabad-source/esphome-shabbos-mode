@@ -15,8 +15,14 @@ or connect to: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 #ifndef HEBREW_CALENDAR_H
 #define HEBREW_CALENDAR_H
 
+#ifdef __cplusplus
+typedef bool hbool;
+#else
+typedef _Bool hbool;
+#endif
+
 #ifndef NOSTDLIB
-	#include <time.h>
+#include <time.h>
 #else
 	typedef long int time_t;
 #endif
@@ -49,8 +55,8 @@ typedef struct {
 	int wday; // weekdays 1 - 6, 0
 	int dayofyear; // starts from tishrei
 	long int offset; // timezone offset in seconds
-	_Bool leap; // if leap year
-	_Bool EY; // if Eretz Yisroel (for yomtov & parshah)
+	hbool leap; // if leap year
+	hbool EY; // if Eretz Yisroel (for yomtov & parshah)
 } hdate;
 
 // molad type: beware that the seconds are actually chalakim 1/1080 of an hour
@@ -69,7 +75,7 @@ long int HebrewCalendarElapsedDays(int year);
 
 unsigned hdatesize();
 hdate hdatenew(int year, int month, int day, int hour, int min, int sec, int msec, long int offset);
-void setEY(hdate *date, _Bool EY);
+void setEY(hdate *date, hbool EY);
 #ifndef NOSTDLIB
 // convert struct tm to hdate
 hdate convertDate(struct tm date);
@@ -131,16 +137,16 @@ int getomer(hdate date);
 // returns 1 - 6 or 12 or 34 or 56 for double chapter
 int getavos(hdate date);
 
-_Bool istaanis(hdate date);
-_Bool isassurbemelachah(hdate date);
+hbool istaanis(hdate date);
+hbool isassurbemelachah(hdate date);
 // return 1 if cadlelighting regular, 2 if at nightfall, 3 if chanukah, or 0 if none
 int iscandlelighting(hdate date);
 
 // return true if birchas hachama on date
-_Bool isbirchashachama(hdate date);
+hbool isbirchashachama(hdate date);
 
 // return true if birchas hashanim is switched on date (winter)
-_Bool isbirchashashanim(hdate date);
+hbool isbirchashashanim(hdate date);
 // return true if tal umatar livrachah is said in birchas hashanim
-_Bool getbirchashashanim(hdate date);
+hbool getbirchashashanim(hdate date);
 #endif

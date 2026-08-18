@@ -95,6 +95,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   std::string get_next_turn_off_text() const;
   std::string get_current_hebrew_date_text() const;
   void save_runtime_settings();
+  void reset_runtime_settings();
   void register_event_text_sensor(ShabbosModeEventTextSensor *sensor);
 
   void setup() override;
@@ -126,6 +127,7 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
   std::string normalize_plag_opinion_(const std::string &plag_opinion) const;
   int get_antimeridian_adjustment_(hdate current) const;
   long get_local_mean_time_offset_(hdate current) const;
+  long get_timezone_offset_for_date_(const struct tm &local_date) const;
   bool should_apply_early_take_in_(hdate date, int current_month, int current_day) const;
   bool is_in_early_take_in_range_(int current_month, int current_day) const;
   bool is_month_day_before_or_equal_(int left_month, int left_day, int right_month, int right_day) const;
@@ -185,6 +187,9 @@ class ShabbosModeBinarySensor : public binary_sensor::BinarySensor, public Polli
     int early_take_in_to_month;
     int early_take_in_to_day;
   };
+  RuntimeSettings get_runtime_settings_() const;
+  void apply_runtime_settings_(const RuntimeSettings &settings);
+  RuntimeSettings yaml_defaults_{};
   ESPPreferenceObject settings_pref_;
   bool settings_dirty_{false};
   uint32_t settings_dirty_at_{0};

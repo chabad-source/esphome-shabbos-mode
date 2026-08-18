@@ -204,7 +204,7 @@ hdate hdatenew(int year, int month, int day, int hour, int min, int sec, int mse
 	return result;
 }
 
-void setEY(hdate *date, _Bool EY)
+void setEY(hdate *date, hbool EY)
 {
 	date->EY = EY;
 }
@@ -893,7 +893,7 @@ int getavos(hdate date)
 	}
 	return chapter;
 }
-_Bool istaanis(hdate date)
+hbool istaanis(hdate date)
 {
 	yomtov current = getyomtov(date);
 	if (current == YOM_KIPPUR
@@ -902,7 +902,7 @@ _Bool istaanis(hdate date)
 	return 0;
 }
 
-_Bool isassurbemelachah(hdate date)
+hbool isassurbemelachah(hdate date)
 {
 	yomtov current = getyomtov(date);
 	if(!date.wday
@@ -941,7 +941,7 @@ int iscandlelighting(hdate date)
 	return 0;
 }
 
-_Bool isbirchashachama(hdate date)
+hbool isbirchashachama(hdate date)
 {
 	long yearstart = HebrewCalendarElapsedDays(date.year);
 	long day = yearstart + date.dayofyear;
@@ -977,7 +977,7 @@ int TekufasTishreiElapsedDays(hdate date)
 	return (int) days - solar;
 }
 
-_Bool isbirchashashanim(hdate date)
+hbool isbirchashashanim(hdate date)
 {
 	if (date.EY) {
 		if (date.month == 7 && date.day == 7) {return 1;}
@@ -985,7 +985,7 @@ _Bool isbirchashashanim(hdate date)
 	return 0;
 }
 
-_Bool getbirchashashanim(hdate date)
+hbool getbirchashashanim(hdate date)
 {
 	if (date.month == 1 && date.day < 15) {return 1;}
 	if (date.month < 7) {return 0;}

@@ -1,0 +1,46 @@
+esphome:
+  name: shabbos-mode-ci
+
+host:
+
+logger:
+
+api:
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [shabbos_mode]
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+binary_sensor:
+  - platform: shabbos_mode
+    id: shabbos_active
+    name: Shabbos Active
+    time_id: ha_time
+    latitude: 40.66896
+    longitude: -73.94284
+    elevation: 34
+    early_take_in:
+      time: "18:30"
+      from: "05-01"
+      to: "09-15"
+
+button:
+  - platform: shabbos_mode
+    name: Restore Shabbos YAML Defaults
+    shabbos_mode_id: shabbos_active
+
+text_sensor:
+  - platform: shabbos_mode
+    name: Next Shabbos Start
+    shabbos_mode_id: shabbos_active
+    type: next_turn_on
+  - platform: shabbos_mode
+    name: Current Hebrew Date
+    shabbos_mode_id: shabbos_active
+    type: current_hebrew_date
